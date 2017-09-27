@@ -36,6 +36,7 @@ import {globalKeyboardHandlerStack, KeySequenceMap} from 'neuroglancer/util/keyb
 import {NullarySignal} from 'neuroglancer/util/signal';
 import {CompoundTrackable} from 'neuroglancer/util/trackable';
 import {DataDisplayLayout, LAYOUTS} from 'neuroglancer/viewer_layouts';
+import {EDITORS} from 'neuroglancer/viewer_editors';
 import {ViewerState, VisibilityPrioritySpecification} from 'neuroglancer/viewer_state';
 import {WatchableVisibilityPriority} from 'neuroglancer/visibility_priority/frontend';
 import {GL} from 'neuroglancer/webgl/context';
@@ -45,6 +46,14 @@ require('./viewer.css');
 require('./help_button.css');
 require('neuroglancer/noselect.css');
 
+export function getEditorByName(obj: any) {
+  let editor = EDITORS.find(x => x[0] === obj);
+  if (editor === undefined) {
+    throw new Error(`Invalid edit mode: ${JSON.stringify(obj)}.`);
+  }
+  return editor;
+}
+
 export function getLayoutByName(obj: any) {
   let layout = LAYOUTS.find(x => x[0] === obj);
   if (layout === undefined) {
@@ -53,9 +62,19 @@ export function getLayoutByName(obj: any) {
   return layout;
 }
 
+export function validateEditorName(obj: any) {
+  let editor = getEditorByName(obj);
+  return editor[0];
+}
+
 export function validateLayoutName(obj: any) {
   let layout = getLayoutByName(obj);
   return layout[0];
+}
+
+export function callEditor(editor: TrackableValue<string>, element: HTMLElement) {
+  let runEditor = getEditorByName(editor.value)[1];
+  return runEditor(element);
 }
 
 export class DataManagementContext extends RefCounted {
@@ -121,6 +140,7 @@ export class Viewer extends RefCounted implements ViewerState {
   keyCommands = new Map<string, (this: Viewer) => void>();
   layerSpecification: LayerListSpecification;
   layoutName = new TrackableValue<string>(LAYOUTS[0][0], validateLayoutName);
+  editorName = new TrackableValue<string>(EDITORS[0][0], validateEditorName);
 
   state = new CompoundTrackable();
 
@@ -209,6 +229,12 @@ export class Viewer extends RefCounted implements ViewerState {
 
     this.makeUI();
 
+    this.editorName.changed.add(() => {
+      let element = this.dataDisplayLayout.rootElement;
+      // Start the given editing mode
+      let mode = callEditor(this.editorName, element);
+    });
+
     this.layoutName.changed.add(() => {
       if (this.dataDisplayLayout !== undefined) {
         let element = this.dataDisplayLayout.rootElement;
@@ -218,6 +244,9 @@ export class Viewer extends RefCounted implements ViewerState {
     });
 
     let {keyCommands} = this;
+    keyCommands.set('toggle-edit-mode', function() {
+      this.toggleEditor();
+    });
     keyCommands.set('toggle-layout', function() {
       this.toggleLayout();
     });
@@ -336,6 +365,13 @@ export class Viewer extends RefCounted implements ViewerState {
   createDataDisplayLayout(element: HTMLElement) {
     let layoutCreator = getLayoutByName(this.layoutName.value)[1];
     this.dataDisplayLayout = layoutCreator(element, this);
+  }
+
+  toggleEditor() {
+    let existingEditor = getEditorByName(this.editorName.value);
+    let editorIndex = EDITORS.indexOf(existingEditor);
+    let newEditor = EDITORS[(editorIndex + 1) % EDITORS.length];
+    this.editorName.value = newEditor[0];
   }
 
   toggleLayout() {

@@ -30,6 +30,9 @@ export function makeDefaultKeyBindings(keyMap: KeySequenceMap) {
   keyMap.bind('control+equal', 'zoom-in');
   keyMap.bind('control+shift+equal', 'zoom-in');
   keyMap.bind('control+minus', 'zoom-out');
+  keyMap.bind('slash', 'toggle-edit-mode');
+  keyMap.bind('control+keyz', 'undo-edit');
+  keyMap.bind('control+keyy', 'redo-edit');
   keyMap.bind('keyr', 'rotate-relative-z-');
   keyMap.bind('keye', 'rotate-relative-z+');
   keyMap.bind('shift+arrowdown', 'rotate-relative-x-');
