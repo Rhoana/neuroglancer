@@ -233,6 +233,7 @@ export class Viewer extends RefCounted implements ViewerState {
       let element = this.dataDisplayLayout.rootElement;
       // Start the given editing mode
       let mode = callEditor(this.editorName, element);
+      console.log(mode);
     });
 
     this.layoutName.changed.add(() => {
