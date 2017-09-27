@@ -247,6 +247,7 @@ export class SliceViewPanel extends RenderedDataPanel {
     vec3.transformMat4(out, out, sliceView.viewportToData);
 
     let glWindowY = height - y;
+    // UNUSED: readPixelAsUint32 returns 0
     this.pickIDs.setMouseState(
         mouseState,
         offscreenFramebuffer.readPixelAsUint32(OffscreenTextures.PICK, glWindowX, glWindowY));
