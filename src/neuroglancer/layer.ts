@@ -443,6 +443,10 @@ export class MouseSelectionState implements PickState {
   }
 
   setActive(value: boolean) {
+    /*
+     * Call all Mouse Movement handlers
+     * If active, activating, or deactivating
+     */
     this.stale = false;
     if (this.active !== value || value === true) {
       this.active = value;
@@ -476,6 +480,11 @@ export class LayerSelectedValues extends RefCounted {
   }
 
   handleChange() {
+    /*
+     * Selected Values handlers should:
+     *   set Layer Panel from this.get
+     *   set Segment Selection from this.get
+     */
     this.needsUpdate = true;
     this.changed.dispatch();
   }

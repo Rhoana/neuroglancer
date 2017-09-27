@@ -44,6 +44,7 @@ void emit(vec4 color, vec4 pickId) {
 `);
 }
 
+// UNUSED: Given only to an unused render context
 function sliceViewPanelEmitPickID(builder: ShaderBuilder) {
   builder.addFragmentCode(`
 void emit(vec4 color, vec4 pickId) {
@@ -114,6 +115,10 @@ export class SliceViewPanel extends RenderedDataPanel {
     this.registerDisposer(sliceView);
     this.registerDisposer(sliceView.visibility.add(this.visibility));
     this.registerDisposer(sliceView.viewChanged.add(() => {
+      /*
+       * If this panel visible, handler should:
+       *   Schedule redraws for panels in context
+       */
       if (this.visible) {
         context.scheduleRedraw();
       }
@@ -133,6 +138,9 @@ export class SliceViewPanel extends RenderedDataPanel {
   }
 
   draw() {
+    /*
+     * Called on update of display context
+     */
     let {sliceView} = this;
     if (!sliceView.hasValidViewport) {
       return;
@@ -143,6 +151,9 @@ export class SliceViewPanel extends RenderedDataPanel {
     let {gl} = this;
 
     let {width, height, dataToDevice} = sliceView;
+    /*
+     * Begin drawing to the framebuffer
+     */
     this.offscreenFramebuffer.bind(width, height);
     gl.disable(gl.SCISSOR_TEST);
     this.gl.clearColor(0.0, 0.0, 0.0, 0.0);
@@ -152,14 +163,22 @@ export class SliceViewPanel extends RenderedDataPanel {
     // FIXME: avoid use of temporary matrix
     let mat = mat4.create();
 
+    /*
+     * Draw everything to the framebuffer
+     */
     this.sliceViewRenderHelper.draw(
         sliceView.offscreenFramebuffer.colorBuffers[0].texture, identityMat4, this.colorFactor,
         this.backgroundColor, 0, 0, 1, 1);
 
+    // All visible Slice Panel layers in the Viewer's layers
+    // UNUSED: getVisibleLayers returns Empty Array
     let visibleLayers = this.visibleLayerTracker.getVisibleLayers();
+
     let {pickIDs} = this;
     pickIDs.clear();
     this.offscreenFramebuffer.bindSingle(OffscreenTextures.COLOR);
+
+    // UNUSED: no side effects, never passed to renderLayer
     let renderContext: SliceViewPanelRenderContext = {
       dataToDevice: sliceView.dataToDevice,
       pickIDs: pickIDs,
@@ -210,7 +229,7 @@ export class SliceViewPanel extends RenderedDataPanel {
 
     this.offscreenFramebuffer.unbind();
 
-    // Draw the texture over the whole viewport.
+    // Copy framebuffer to screen
     this.setGLViewport();
     this.offscreenCopyHelper.draw(
         this.offscreenFramebuffer.colorBuffers[OffscreenTextures.COLOR].texture);

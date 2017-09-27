@@ -177,6 +177,10 @@ export class PerspectivePanel extends RenderedDataPanel {
   }
 
   viewportChanged() {
+    /*
+     * If this panel visible, handler should:
+     *   Schedule redraws for panels in context
+     */
     this.context.scheduleRedraw();
   }
 
@@ -257,6 +261,9 @@ export class PerspectivePanel extends RenderedDataPanel {
   }
 
   draw() {
+    /*
+     * Called on update of display context
+     */
     let {width, height} = this;
     if (!this.navigationState.valid || width === 0 || height === 0) {
       return;
@@ -270,6 +277,9 @@ export class PerspectivePanel extends RenderedDataPanel {
     }
 
     let gl = this.gl;
+    /*
+     * Begin drawing to the framebuffer
+     */
     this.offscreenFramebuffer.bind(width, height);
 
     gl.disable(gl.SCISSOR_TEST);
@@ -290,6 +300,7 @@ export class PerspectivePanel extends RenderedDataPanel {
 
     let pickIDs = this.pickIDs;
     pickIDs.clear();
+
     let renderContext: PerspectiveViewRenderContext = {
       dataToDevice: projectionMat,
       lightDirection: lightingDirection,
@@ -304,6 +315,8 @@ export class PerspectivePanel extends RenderedDataPanel {
       viewportHeight: height,
     };
 
+    // All visible Perspective Panel layers in the Viewer's layers
+    // UNUSED: getVisibleLayers returns Empty Array
     let visibleLayers = this.visibleLayerTracker.getVisibleLayers();
 
     let hasTransparent = false;
@@ -377,7 +390,7 @@ export class PerspectivePanel extends RenderedDataPanel {
     gl.disable(gl.DEPTH_TEST);
     this.offscreenFramebuffer.unbind();
 
-    // Draw the texture over the whole viewport.
+    // Copy framebuffer to screen
     this.setGLViewport();
     this.offscreenCopyHelper.draw(
         this.offscreenFramebuffer.colorBuffers[OffscreenTextures.COLOR].texture);
@@ -398,6 +411,9 @@ export class PerspectivePanel extends RenderedDataPanel {
       mat4.multiply(mat, sliceView.viewportToData, mat);
       mat4.multiply(mat, dataToDevice, mat);
 
+      /*
+       * Draw a slice to its own framebuffer
+       */
       sliceViewRenderHelper.draw(
           sliceView.offscreenFramebuffer.colorBuffers[0].texture, mat,
           vec4.fromValues(factor, factor, factor, 1), vec4.fromValues(0.5, 0.5, 0.5, 1), 0, 0, 1,
