@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-export function NoEditor(element: HTMLElement) {
-  return `No ${element.innerText}`;
-}
+export const enum EDITORS {
+  NONE = 0,
+  MERGE = 1,
+  SPLIT = 2,
+  TOTAL = 3,
+};
 
-export const EDITORS:
-    [string, (element: HTMLElement) => string][] = [
-      ['none', NoEditor],
-      ['merge', NoEditor],
-      ['split', NoEditor],
-    ];
+export function getValidEditor(editor: number): number {
+  return editor % EDITORS.TOTAL;
+}
