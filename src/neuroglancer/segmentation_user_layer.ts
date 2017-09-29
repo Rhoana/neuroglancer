@@ -16,7 +16,7 @@
 
 import {CoordinateTransform} from 'neuroglancer/coordinate_transform';
 import {getMeshSource, getSkeletonSource} from 'neuroglancer/datasource/factory';
-import {UserLayer, UserLayerDropdown} from 'neuroglancer/layer';
+import {EditorLayer, UserLayer, UserLayerDropdown} from 'neuroglancer/layer';
 import {LayerListSpecification, registerLayerType, registerVolumeLayerType} from 'neuroglancer/layer_specification';
 import {getVolumeWithStatusMessage} from 'neuroglancer/layer_specification';
 import {MeshSource} from 'neuroglancer/mesh/frontend';
@@ -51,7 +51,7 @@ const OBJECT_ALPHA_JSON_KEY = 'objectAlpha';
 const HIDE_SEGMENT_ZERO_JSON_KEY = 'hideSegmentZero';
 
 
-export class SegmentationUserLayer extends UserLayer {
+export class SegmentationUserLayer extends UserLayer implements EditorLayer {
   displayState: SliceViewSegmentationDisplayState&SegmentationDisplayState3D&
       SkeletonLayerDisplayState = {
         segmentColorHash: SegmentColorHash.getDefault(),
@@ -182,6 +182,17 @@ export class SegmentationUserLayer extends UserLayer {
   addMesh(meshSource: MeshSource) {
     this.meshLayer = new MeshLayer(this.manager.chunkManager, meshSource, this.displayState);
     this.addRenderLayer(this.meshLayer);
+  }
+
+  mergeOne(setId: Uint64, newId: Uint64) {
+    let {segmentEquivalences} = this.displayState;
+    segmentEquivalences.link(setId, newId);
+  }
+
+  mergeMany(setId: Uint64, newIds: IterableIterator<Uint64>) {
+    for (let newId of newIds) {
+      this.mergeOne(setId, newId);
+    }
   }
 
   toJSON() {

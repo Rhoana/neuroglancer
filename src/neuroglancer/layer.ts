@@ -82,6 +82,19 @@ export class UserLayerDropdown extends RefCounted {
   onHide() {}
 }
 
+export interface EditorLayer {
+  mergeMany : (setId: Uint64, newIds: IterableIterator<Uint64>) => void;
+  mergeOne : (setId: Uint64, newId: Uint64) => void;
+}
+
+export function isEditorLayer(layer: any): layer is EditorLayer {
+  return (<EditorLayer>layer).mergeOne !== undefined;
+}
+
+export function hasVisibleEditorLayer(managed: ManagedUserLayer): boolean {
+  return managed.visible && isEditorLayer(managed.layer);
+}
+
 export class UserLayer extends RefCounted {
   layersChanged = new NullarySignal();
   readyStateChanged = new NullarySignal();
@@ -289,6 +302,18 @@ export class LayerManager extends RefCounted {
 
   getLayerByName(name: string) {
     return this.managedLayers.find(x => x.name === name);
+  }
+
+  getEditorLayer(): EditorLayer | undefined {
+    // Get the top visible editor layer
+    let topLayers = [...this.managedLayers].reverse();
+    let topLayer = topLayers.find(hasVisibleEditorLayer);
+    // Double check that the layer is in fact an editor layer
+    let layer = topLayer ? topLayer.layer : {};
+    if (isEditorLayer(layer)) {
+      return layer;
+    }
+    return undefined;
   }
 
   /**
