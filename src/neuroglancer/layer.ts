@@ -91,8 +91,8 @@ export function isEditorLayer(layer: any): layer is EditorLayer {
   return (<EditorLayer>layer).mergeOne !== undefined;
 }
 
-export function hasVisibleEditorLayer(managed: ManagedUserLayer): boolean {
-  return managed.visible && isEditorLayer(managed.layer);
+export function hasVisibleEditorLayer(managedLayer: ManagedUserLayer): boolean {
+  return managedLayer.visible && isEditorLayer(managedLayer.layer);
 }
 
 export class UserLayer extends RefCounted {
