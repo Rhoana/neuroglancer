@@ -125,6 +125,8 @@ export class SliceViewPanel extends RenderedDataPanel {
       }
     }
     this.registerDisposer(sliceView.viewChanged.add(redrawAllPanels));
+    // UNUSED
+    // this.registerDisposer(viewer.editorState.editor.changed.add(redrawAllPanels));
     /*
      * If this panel visible, handler should:
      *   Schedule redraws for this panel
