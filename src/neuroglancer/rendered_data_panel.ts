@@ -20,6 +20,7 @@ import {NavigationState} from 'neuroglancer/navigation_state';
 import {AXES_NAMES, kAxes, vec3} from 'neuroglancer/util/geom';
 import {getWheelZoomAmount} from 'neuroglancer/util/wheel_zoom';
 import {ViewerState} from 'neuroglancer/viewer_state';
+import {EDITORS} from 'neuroglancer/viewer_editors';
 
 require('./rendered_data_panel.css');
 
@@ -71,13 +72,15 @@ export abstract class RenderedDataPanel extends RenderedPanel {
     super(context, element, viewer.visibility);
 
     element.classList.add('rendered-data-panel');
+    // Get the editormode for the full viewer
+    let {layerManager, editorState} = viewer;
 
     this.registerEventListener(element, 'mousemove', this.onMousemove.bind(this));
     this.registerEventListener(element, 'mouseleave', this.onMouseout.bind(this));
     this.registerEventListener(element, 'mousedown', this.onMousedown.bind(this), false);
     this.registerEventListener(element, 'wheel', this.onMousewheel.bind(this), false);
     this.registerEventListener(element, 'dblclick', () => {
-      this.viewer.layerManager.invokeAction('select');
+      layerManager.invokeAction('select', editorState);
     });
   }
 

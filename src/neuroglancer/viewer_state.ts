@@ -15,6 +15,8 @@
  */
 
 import {LayerManager, MouseSelectionState} from 'neuroglancer/layer';
+import {EditorState} from 'neuroglancer/viewer_editors';
+import {TrackableValue} from 'neuroglancer/trackable_value';
 import {NavigationState} from 'neuroglancer/navigation_state';
 import {TrackableBoolean} from 'neuroglancer/trackable_boolean';
 import {VisibilityPrioritySpecification} from 'neuroglancer/visibility_priority/frontend';
@@ -28,5 +30,6 @@ export interface ViewerPositionState {
 export {VisibilityPrioritySpecification};
 
 export interface ViewerState extends ViewerPositionState, VisibilityPrioritySpecification {
+  editorState: EditorState;
   layerManager: LayerManager;
 }

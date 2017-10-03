@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+import {TrackableValue} from 'neuroglancer/trackable_value';
+import {RefCounted} from 'neuroglancer/util/disposable';
+import {Uint64} from 'neuroglancer/util/uint64';
+
+/*
+ * Names of all valid editors
+ */
 export const enum EDITORS {
   NONE = 0,
   MERGE = 1,
@@ -21,6 +28,16 @@ export const enum EDITORS {
   TOTAL = 3,
 };
 
+/*
+ * Begin EditorState definition
+ */
 export function getValidEditor(editor: number): number {
   return editor % EDITORS.TOTAL;
+}
+export function trackableEditor(editor: number = EDITORS.NONE) {
+  return new TrackableValue<number>(editor, getValidEditor);
+}
+export interface EditorState {
+  editor: TrackableValue<number>;
+  segment: Uint64 | undefined;
 }

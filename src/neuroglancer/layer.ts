@@ -16,6 +16,7 @@
 
 import debounce from 'lodash/debounce';
 import throttle from 'lodash/throttle';
+import {EditorState} from 'neuroglancer/viewer_editors';
 import {RenderedPanel} from 'neuroglancer/display_context';
 import {SpatialPosition} from 'neuroglancer/navigation_state';
 import {RefCounted} from 'neuroglancer/util/disposable';
@@ -83,12 +84,19 @@ export class UserLayerDropdown extends RefCounted {
 }
 
 export interface EditorLayer {
+  handleEditorAction: (action: string, editorState: EditorState) => void;
   mergeMany : (setId: Uint64, newIds: IterableIterator<Uint64>) => void;
-  mergeOne : (setId: Uint64, newId: Uint64) => void;
 }
 
 export function isEditorLayer(layer: any): layer is EditorLayer {
-  return (<EditorLayer>layer).mergeOne !== undefined;
+  return (<EditorLayer>layer).handleEditorAction !== undefined;
+}
+
+export function toEditorLayer(layer: any): EditorLayer | undefined {
+  if (isEditorLayer(layer)) {
+    return layer;
+  }
+  return undefined;
 }
 
 export function hasVisibleEditorLayer(managedLayer: ManagedUserLayer): boolean {
@@ -215,6 +223,7 @@ export class ManagedUserLayer extends RefCounted {
 
 export class LayerManager extends RefCounted {
   managedLayers = new Array<ManagedUserLayer>();
+  editorLayer = this.findEditorLayer();
   layersChanged = new NullarySignal();
   readyStateChanged = new NullarySignal();
   specificationChanged = new NullarySignal();
@@ -235,6 +244,8 @@ export class LayerManager extends RefCounted {
     this.managedLayers.push(managedLayer);
     this.layersChanged.dispatch();
     this.readyStateChanged.dispatch();
+    // Update the layer used for editing
+    this.editorLayer = this.findEditorLayer();
     return managedLayer;
   }
 
@@ -292,6 +303,11 @@ export class LayerManager extends RefCounted {
     }
     let [oldLayer] = this.managedLayers.splice(oldIndex, 1);
     this.managedLayers.splice(newIndex, 0, oldLayer);
+    // Update the layer used for editing
+    this.editorLayer = this.findEditorLayer();
+    // Layer Manager handlers should:
+    //   Change selected values and layer panel
+    //   Update the visible layers
     this.layersChanged.dispatch();
   }
 
@@ -304,16 +320,17 @@ export class LayerManager extends RefCounted {
     return this.managedLayers.find(x => x.name === name);
   }
 
-  getEditorLayer(): EditorLayer | undefined {
+  findEditorLayer(): EditorLayer | undefined {
     // Get the top visible editor layer
     let topLayers = [...this.managedLayers].reverse();
     let topLayer = topLayers.find(hasVisibleEditorLayer);
     // Double check that the layer is in fact an editor layer
-    let layer = topLayer ? topLayer.layer : {};
-    if (isEditorLayer(layer)) {
-      return layer;
-    }
-    return undefined;
+    let editorLayer = topLayer ? topLayer.layer : {};
+    return toEditorLayer(editorLayer);
+  }
+
+  matchEditorLayer(userLayer: UserLayer): boolean {
+    return this.editorLayer == toEditorLayer(userLayer);
   }
 
   /**
@@ -404,13 +421,23 @@ export class LayerManager extends RefCounted {
     };
   }
 
-  invokeAction(action: string) {
+  invokeAction(action: string, editorState?: EditorState) {
     for (let managedLayer of this.managedLayers) {
       if (managedLayer.layer === null || !managedLayer.visible) {
         continue;
       }
       let userLayer = managedLayer.layer;
-      userLayer.handleAction(action);
+      /*
+       * Invoke Editor Actions if needed
+       */
+      let {editorLayer} = this;
+      if (editorState && editorLayer && this.matchEditorLayer(userLayer)) {
+        editorLayer.handleEditorAction(action, editorState);
+      }
+      else {
+        userLayer.handleAction(action);
+      }
+      // Handle render layers the same regardless
       for (let renderLayer of userLayer.renderLayers) {
         if (!renderLayer.ready) {
           continue;

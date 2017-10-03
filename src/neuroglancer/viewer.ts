@@ -36,7 +36,7 @@ import {globalKeyboardHandlerStack, KeySequenceMap} from 'neuroglancer/util/keyb
 import {NullarySignal} from 'neuroglancer/util/signal';
 import {CompoundTrackable} from 'neuroglancer/util/trackable';
 import {DataDisplayLayout, LAYOUTS} from 'neuroglancer/viewer_layouts';
-import {EDITORS, getValidEditor} from 'neuroglancer/viewer_editors';
+import {EditorState, trackableEditor} from 'neuroglancer/viewer_editors';
 import {ViewerState, VisibilityPrioritySpecification} from 'neuroglancer/viewer_state';
 import {WatchableVisibilityPriority} from 'neuroglancer/visibility_priority/frontend';
 import {GL} from 'neuroglancer/webgl/context';
@@ -122,7 +122,10 @@ export class Viewer extends RefCounted implements ViewerState {
   keyCommands = new Map<string, (this: Viewer) => void>();
   layerSpecification: LayerListSpecification;
   layoutName = new TrackableValue<string>(LAYOUTS[0][0], validateLayoutName);
-  editorMode = new TrackableValue<number>(EDITORS.NONE, getValidEditor);
+  editorState = <EditorState> {
+    editor: trackableEditor(),
+    segment: undefined,
+  }
 
   state = new CompoundTrackable();
 
@@ -158,6 +161,12 @@ export class Viewer extends RefCounted implements ViewerState {
     }));
     this.registerDisposer(display.updateFinished.add(() => {
       this.onUpdateDisplayFinished();
+    }));
+
+    // Allow the "edit" event on all mouse movements
+    let {mouseState, layerManager, editorState} = this;
+    this.registerDisposer(mouseState.changed.add(() => {
+      layerManager.invokeAction('edit', editorState);
     }));
 
     const {state} = this;
@@ -344,8 +353,8 @@ export class Viewer extends RefCounted implements ViewerState {
   }
 
   toggleEditor() {
-    let mode = this.editorMode;
-    mode.value = getValidEditor(mode.value + 1);
+    let {editor} = this.editorState;
+    editor.restoreState(editor.value + 1);
   }
 
   toggleLayout() {

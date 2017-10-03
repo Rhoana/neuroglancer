@@ -16,12 +16,14 @@
 
 import {ChunkManager} from 'neuroglancer/chunk_manager/frontend';
 import {DisplayContext} from 'neuroglancer/display_context';
+import {EditorState} from 'neuroglancer/viewer_editors';
 import {LayerManager, MouseSelectionState} from 'neuroglancer/layer';
 import * as L from 'neuroglancer/layout';
 import {NavigationState, OrientationState, Pose} from 'neuroglancer/navigation_state';
 import {PerspectivePanel} from 'neuroglancer/perspective_view/panel';
 import {SliceView} from 'neuroglancer/sliceview/frontend';
 import {SliceViewPanel} from 'neuroglancer/sliceview/panel';
+import {TrackableValue} from 'neuroglancer/trackable_value';
 import {TrackableBoolean} from 'neuroglancer/trackable_boolean';
 import {RefCounted} from 'neuroglancer/util/disposable';
 import {removeChildren} from 'neuroglancer/util/dom';
@@ -36,6 +38,7 @@ export interface SliceViewViewerState {
 
 export interface ViewerUIState extends SliceViewViewerState, VisibilityPrioritySpecification {
   display: DisplayContext;
+  editorState: EditorState;
   mouseState: MouseSelectionState;
   perspectiveNavigationState: NavigationState;
   showPerspectiveSliceViews: TrackableBoolean;
@@ -76,6 +79,7 @@ export function getCommonViewerState(viewer: ViewerUIState) {
     layerManager: viewer.layerManager,
     showAxisLines: viewer.showAxisLines,
     visibility: viewer.visibility,
+    editorState: viewer.editorState,
   };
 }
 
