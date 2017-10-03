@@ -22,6 +22,7 @@ import {getVolumeWithStatusMessage} from 'neuroglancer/layer_specification';
 import {MeshSource} from 'neuroglancer/mesh/frontend';
 import {MeshLayer} from 'neuroglancer/mesh/frontend';
 import {Overlay} from 'neuroglancer/overlay';
+import {EDITORS, EditorState} from 'neuroglancer/viewer_editors';
 import {SegmentColorHash} from 'neuroglancer/segment_color';
 import {SegmentationDisplayState3D, SegmentSelectionState, Uint64MapEntry} from 'neuroglancer/segmentation_display_state/frontend';
 import {SharedDisjointUint64Sets} from 'neuroglancer/shared_disjoint_sets';
@@ -244,6 +245,52 @@ export class SegmentationUserLayer extends UserLayer implements EditorLayer {
 
   makeDropdown(element: HTMLDivElement) {
     return new SegmentationDropdown(element, this);
+  }
+
+  handleEditorAction(action: string, editorState: EditorState) {
+    // Handle action based on editor
+    switch (editorState.editor.value) {
+      case EDITORS.MERGE: {
+        this.handleMergeAction(action, editorState);
+        break;
+      }
+      default: {
+        this.handleAction(action);
+        break;
+      }
+    }
+  }
+
+  handleMergeAction(action: string, editorState: EditorState) {
+    let {segmentSelectionState} = this.displayState;
+    let haveSegment = segmentSelectionState.hasSelectedSegment;
+    // Allow merges
+    switch (action) {
+      case 'select': {
+        if (haveSegment) {
+          let segment = segmentSelectionState.selectedSegment;
+          // Begin merge of selected
+          if (editorState.segment === undefined) {
+            editorState.segment = segment.clone();
+            break;
+          }
+          // End merge of segment
+          editorState.segment = undefined;
+          break;
+        }
+      }
+      case 'edit': {
+        if (haveSegment && editorState.segment) {
+          let segment = segmentSelectionState.selectedSegment;
+          this.mergeOne(editorState.segment, segment);
+        }
+        break;
+      }
+      default: {
+        this.handleAction(action);
+        break;
+      }
+    }
   }
 
   handleAction(action: string) {
