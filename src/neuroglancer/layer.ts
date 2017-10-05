@@ -502,6 +502,11 @@ export class MouseSelectionState implements PickState {
     this.stale = false;
     if (this.active !== value || value === true) {
       this.active = value;
+      /*
+       * Mouse movement handlers should:
+       *   Handle changed selections per layer
+       *   Trigger the edit action
+       */
       this.changed.dispatch();
     }
   }
@@ -534,8 +539,8 @@ export class LayerSelectedValues extends RefCounted {
   handleChange() {
     /*
      * Selected Values handlers should:
-     *   set Layer Panel from this.get
-     *   set Segment Selection from this.get
+     *   store values for user layer from mouse position
+     *   set panel text from stored values for user layer
      */
     this.needsUpdate = true;
     this.changed.dispatch();
