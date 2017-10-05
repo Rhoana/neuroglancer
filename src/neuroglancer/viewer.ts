@@ -79,6 +79,7 @@ export class DataManagementContext extends RefCounted {
 }
 
 export interface UIOptions {
+  showSaveButton: boolean;
   showHelpButton: boolean;
   showLayerDialog: boolean;
   showLayerPanel: boolean;
@@ -90,6 +91,7 @@ export interface ViewerOptions extends UIOptions, VisibilityPrioritySpecificatio
 }
 
 const defaultViewerOptions = {
+  showSaveButton: true,
   showHelpButton: true,
   showLayerDialog: true,
   showLayerPanel: true,
@@ -166,7 +168,8 @@ export class Viewer extends RefCounted implements ViewerState {
     // Allow the "edit" event on all mouse movements
     let {mouseState, layerManager, editorState} = this;
     this.registerDisposer(mouseState.changed.add(() => {
-      layerManager.invokeAction('edit', editorState);
+      let {editorLayer} = layerManager;
+      layerManager.uniqueAction('edit', editorLayer, editorState);
     }));
 
     const {state} = this;
@@ -282,10 +285,23 @@ export class Viewer extends RefCounted implements ViewerState {
 
     let uiElements: L.Handler[] = [];
 
-    if (options.showHelpButton || options.showLocation) {
+    let {showSaveButton, showHelpButton, showLocation} = options;
+    if (showSaveButton || showHelpButton || showLocation) {
       let rowElements: L.Handler[] = [];
       if (options.showLocation) {
         rowElements.push(L.withFlex(1, element => new PositionStatusPanel(element, this)));
+      }
+      if (options.showHelpButton) {
+        rowElements.push(element => {
+          let button = document.createElement('button');
+          button.className = 'save-button';
+          button.textContent = 'save';
+          button.title = 'Save';
+          element.appendChild(button);
+          this.registerEventListener(button, 'click', () => {
+            this.saveAllEdits();
+          });
+        });
       }
       if (options.showHelpButton) {
         rowElements.push(element => {
@@ -366,6 +382,10 @@ export class Viewer extends RefCounted implements ViewerState {
 
   showHelpDialog() {
     new KeyBindingHelpDialog(this.keyMap);
+  }
+
+  saveAllEdits() {
+    
   }
 
   get gl() {

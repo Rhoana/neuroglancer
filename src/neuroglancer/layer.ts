@@ -83,7 +83,7 @@ export class UserLayerDropdown extends RefCounted {
   onHide() {}
 }
 
-export interface EditorLayer {
+export interface EditorLayer extends UserLayer {
   handleEditorAction: (action: string, editorState: EditorState) => void;
   mergeMany : (setId: Uint64, newIds: IterableIterator<Uint64>) => void;
 }
@@ -223,7 +223,6 @@ export class ManagedUserLayer extends RefCounted {
 
 export class LayerManager extends RefCounted {
   managedLayers = new Array<ManagedUserLayer>();
-  editorLayer = this.findEditorLayer();
   layersChanged = new NullarySignal();
   readyStateChanged = new NullarySignal();
   specificationChanged = new NullarySignal();
@@ -244,8 +243,6 @@ export class LayerManager extends RefCounted {
     this.managedLayers.push(managedLayer);
     this.layersChanged.dispatch();
     this.readyStateChanged.dispatch();
-    // Update the layer used for editing
-    this.editorLayer = this.findEditorLayer();
     return managedLayer;
   }
 
@@ -303,8 +300,6 @@ export class LayerManager extends RefCounted {
     }
     let [oldLayer] = this.managedLayers.splice(oldIndex, 1);
     this.managedLayers.splice(newIndex, 0, oldLayer);
-    // Update the layer used for editing
-    this.editorLayer = this.findEditorLayer();
     // Layer Manager handlers should:
     //   Change selected values and layer panel
     //   Update the visible layers
@@ -320,17 +315,13 @@ export class LayerManager extends RefCounted {
     return this.managedLayers.find(x => x.name === name);
   }
 
-  findEditorLayer(): EditorLayer | undefined {
+  get editorLayer(): EditorLayer | undefined {
     // Get the top visible editor layer
     let topLayers = [...this.managedLayers].reverse();
     let topLayer = topLayers.find(hasVisibleEditorLayer);
     // Double check that the layer is in fact an editor layer
     let editorLayer = topLayer ? topLayer.layer : {};
     return toEditorLayer(editorLayer);
-  }
-
-  matchEditorLayer(userLayer: UserLayer): boolean {
-    return this.editorLayer == toEditorLayer(userLayer);
   }
 
   /**
@@ -421,29 +412,39 @@ export class LayerManager extends RefCounted {
     };
   }
 
+  matchEditorLayer(userLayer: UserLayer): boolean {
+    return this.editorLayer == toEditorLayer(userLayer);
+  }
+
+  uniqueAction(action: string, userLayer?: UserLayer, editorState?: EditorState) {
+    /*
+    * Invoke Editor Actions if needed
+    */
+    if (!userLayer) {
+      return;
+    }
+    let editorLayer = toEditorLayer(userLayer);
+    if (editorState && editorLayer && editorLayer == this.editorLayer) {
+      editorLayer.handleEditorAction(action, editorState);
+    }
+    else {
+      userLayer.handleAction(action);
+    }
+    // Handle render layers the same regardless
+    for (let renderLayer of userLayer.renderLayers) {
+      if (!renderLayer.ready) {
+        continue;
+      }
+      renderLayer.handleAction(action);
+    }
+  }
+
   invokeAction(action: string, editorState?: EditorState) {
     for (let managedLayer of this.managedLayers) {
       if (managedLayer.layer === null || !managedLayer.visible) {
         continue;
       }
-      let userLayer = managedLayer.layer;
-      /*
-       * Invoke Editor Actions if needed
-       */
-      let {editorLayer} = this;
-      if (editorState && editorLayer && this.matchEditorLayer(userLayer)) {
-        editorLayer.handleEditorAction(action, editorState);
-      }
-      else {
-        userLayer.handleAction(action);
-      }
-      // Handle render layers the same regardless
-      for (let renderLayer of userLayer.renderLayers) {
-        if (!renderLayer.ready) {
-          continue;
-        }
-        renderLayer.handleAction(action);
-      }
+      this.uniqueAction(action, managedLayer.layer, editorState);
     }
   }
 }
