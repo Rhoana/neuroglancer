@@ -283,6 +283,11 @@ export class SliceViewPanel extends RenderedDataPanel {
     vec3.transformMat4(out, out, sliceView.viewportToData);
 
     let glWindowY = height - y;
+
+    // Call the edit action on the active editor Layer
+    let {layerManager, editorState} = this.viewer;
+    layerManager.uniqueAction('edit', layerManager.editorLayer, editorState);
+
     // UNUSED: readPixelAsUint32 returns 0
     this.pickIDs.setMouseState(
         mouseState,

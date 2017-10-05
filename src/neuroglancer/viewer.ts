@@ -165,13 +165,6 @@ export class Viewer extends RefCounted implements ViewerState {
       this.onUpdateDisplayFinished();
     }));
 
-    // Allow the "edit" event on all mouse movements
-    let {mouseState, layerManager, editorState} = this;
-    this.registerDisposer(mouseState.changed.add(() => {
-      let {editorLayer} = layerManager;
-      layerManager.uniqueAction('edit', editorLayer, editorState);
-    }));
-
     const {state} = this;
     state.add('layers', this.layerSpecification);
     state.add('navigation', this.navigationState);

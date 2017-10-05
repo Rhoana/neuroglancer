@@ -417,13 +417,11 @@ export class LayerManager extends RefCounted {
   }
 
   uniqueAction(action: string, userLayer?: UserLayer, editorState?: EditorState) {
-    /*
-    * Invoke Editor Actions if needed
-    */
     if (!userLayer) {
       return;
     }
     let editorLayer = toEditorLayer(userLayer);
+    // Invoke Editor Action on active editor layer
     if (editorState && editorLayer && editorLayer == this.editorLayer) {
       editorLayer.handleEditorAction(action, editorState);
     }
