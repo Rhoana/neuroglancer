@@ -26,9 +26,10 @@ const CLEAR_METHOD_ID = 'DisjointUint64Sets.clear';
 
 @registerSharedObject(RPC_TYPE_ID)
 export class SharedDisjointUint64Sets extends SharedObjectCounterpart {
-  // Stes for current and past session
+  // All sets and sets for current session
+  // All sets are used. Current go to json
+  allSets = new DisjointUint64Sets();
   currentSets = new DisjointUint64Sets();
-  savedSets = new DisjointUint64Sets();
   changed = new NullarySignal();
 
   static makeWithCounterpart(rpc: RPC) {
@@ -39,11 +40,20 @@ export class SharedDisjointUint64Sets extends SharedObjectCounterpart {
 
   disposed() {
     this.currentSets = <any>undefined;
+    this.allSets = <any>undefined;
     this.changed = <any>undefined;
     super.disposed();
   }
 
+  linkSaved(a: Uint64, b: Uint64) {
+    // Saved links go to full group
+    this.allSets.link(a,b);
+    this.changed.dispatch();
+  }
+
   link(a: Uint64, b: Uint64) {
+    // New links go to both groups
+    this.allSets.link(a,b);
     if (this.currentSets.link(a, b)) {
       let {rpc} = this;
       if (rpc) {
@@ -56,10 +66,12 @@ export class SharedDisjointUint64Sets extends SharedObjectCounterpart {
   }
 
   get(x: Uint64): Uint64 {
-    return this.currentSets.get(x);
+    return this.allSets.get(x);
   }
 
-  clear() {
+  clearAll() {
+    // Clear all sets everywhere
+    this.allSets.clear();
     if (this.currentSets.clear()) {
       let {rpc} = this;
       if (rpc) {
@@ -69,34 +81,48 @@ export class SharedDisjointUint64Sets extends SharedObjectCounterpart {
     }
   }
 
+  clearSaved() {
+    // Only current sets
+    this.allSets.clear();
+    this.restoreSets(this.linkSaved, this.toJSON());
+  }
+
   setElements(a: Uint64) {
-    return this.currentSets.setElements(a);
+    return this.allSets.setElements(a);
   }
 
   get size() {
-    return this.currentSets.size;
+    return this.allSets.size;
   }
 
   toJSON() {
     return this.currentSets.toJSON();
   }
 
-  /**
-   * Restores the state from a JSON representation.
-   */
-  restoreState(obj: any) {
-    this.clear();
+  restoreSets(linker: (a: Uint64, b: Uint64) => void, obj: any) {
     if (obj !== undefined) {
       let ids = [new Uint64(), new Uint64()];
       parseArray(obj, z => {
         parseArray(z, (s, index) => {
           ids[index % 2].parseString(String(s), 10);
           if (index !== 0) {
-            this.link(ids[0], ids[1]);
+            // Link either current or saved elements
+            linker.call(this, ids[0], ids[1]);
           }
         });
       });
     }
+  }
+
+  // Restores current sets
+  restoreState(obj: any) {
+    this.clearAll();
+    this.restoreSets(this.link, obj);
+  }
+  // Restores saved sets
+  restoreSaved(obj: any) {
+    this.clearSaved();
+    this.restoreSets(this.linkSaved, obj);
   }
 }
 
