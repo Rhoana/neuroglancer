@@ -64,6 +64,7 @@ export class SegmentationUserLayer extends UserLayer implements EditorLayer {
         hideSegmentZero: new TrackableBoolean(true, true),
         visibleSegments: Uint64Set.makeWithCounterpart(this.manager.worker),
         segmentEquivalences: SharedDisjointUint64Sets.makeWithCounterpart(this.manager.worker),
+        savedEquivalences: SharedDisjointUint64Sets.makeWithCounterpart(this.manager.worker),
         volumeSourceOptions: {},
         objectToDataTransform: new CoordinateTransform(),
         fragmentMain: getTrackableFragmentMain(),

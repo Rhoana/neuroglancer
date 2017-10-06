@@ -27,6 +27,7 @@ export interface Bounds {
 
 export interface VisibleSegmentsState {
   visibleSegments: Uint64Set;
+  savedEquivalences: SharedDisjointUint64Sets;
   segmentEquivalences: SharedDisjointUint64Sets;
   clipBounds: SharedWatchableValue<Bounds|undefined>;
 }
