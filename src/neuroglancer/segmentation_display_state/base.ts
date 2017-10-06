@@ -27,7 +27,6 @@ export interface Bounds {
 
 export interface VisibleSegmentsState {
   visibleSegments: Uint64Set;
-  savedEquivalences: SharedDisjointUint64Sets;
   segmentEquivalences: SharedDisjointUint64Sets;
   clipBounds: SharedWatchableValue<Bounds|undefined>;
 }
@@ -46,7 +45,7 @@ export function forEachVisibleSegment(
   let {visibleSegments, segmentEquivalences} = state;
   for (let rootObjectId of visibleSegments) {
     // TODO(jbms): Remove this check if logic is added to ensure that it always holds.
-    if (!segmentEquivalences.disjointSets.isMinElement(rootObjectId)) {
+    if (!segmentEquivalences.currentSets.isMinElement(rootObjectId)) {
       continue;
     }
     for (let objectId of segmentEquivalences.setElements(rootObjectId)) {

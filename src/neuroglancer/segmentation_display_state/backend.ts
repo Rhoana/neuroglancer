@@ -32,7 +32,6 @@ export class SegmentationLayerSharedObjectCounterpart extends Base implements Vi
   visibleSegments: Uint64Set;
   clipBounds: SharedWatchableValue<Bounds>;
   segmentEquivalences: SharedDisjointUint64Sets;
-  savedEquivalences: SharedDisjointUint64Sets;
 
   constructor(rpc: RPC, options: any) {
     super(rpc, options);

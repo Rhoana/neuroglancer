@@ -26,7 +26,9 @@ const CLEAR_METHOD_ID = 'DisjointUint64Sets.clear';
 
 @registerSharedObject(RPC_TYPE_ID)
 export class SharedDisjointUint64Sets extends SharedObjectCounterpart {
-  disjointSets = new DisjointUint64Sets();
+  // Stes for current and past session
+  currentSets = new DisjointUint64Sets();
+  savedSets = new DisjointUint64Sets();
   changed = new NullarySignal();
 
   static makeWithCounterpart(rpc: RPC) {
@@ -36,13 +38,13 @@ export class SharedDisjointUint64Sets extends SharedObjectCounterpart {
   }
 
   disposed() {
-    this.disjointSets = <any>undefined;
+    this.currentSets = <any>undefined;
     this.changed = <any>undefined;
     super.disposed();
   }
 
   link(a: Uint64, b: Uint64) {
-    if (this.disjointSets.link(a, b)) {
+    if (this.currentSets.link(a, b)) {
       let {rpc} = this;
       if (rpc) {
         rpc.invoke(
@@ -54,11 +56,11 @@ export class SharedDisjointUint64Sets extends SharedObjectCounterpart {
   }
 
   get(x: Uint64): Uint64 {
-    return this.disjointSets.get(x);
+    return this.currentSets.get(x);
   }
 
   clear() {
-    if (this.disjointSets.clear()) {
+    if (this.currentSets.clear()) {
       let {rpc} = this;
       if (rpc) {
         rpc.invoke(CLEAR_METHOD_ID, {'id': this.rpcId});
@@ -68,15 +70,15 @@ export class SharedDisjointUint64Sets extends SharedObjectCounterpart {
   }
 
   setElements(a: Uint64) {
-    return this.disjointSets.setElements(a);
+    return this.currentSets.setElements(a);
   }
 
   get size() {
-    return this.disjointSets.size;
+    return this.currentSets.size;
   }
 
   toJSON() {
-    return this.disjointSets.toJSON();
+    return this.currentSets.toJSON();
   }
 
   /**
@@ -107,14 +109,14 @@ registerRPC(ADD_METHOD_ID, function(x) {
   tempA.high = x['ah'];
   tempB.low = x['bl'];
   tempB.high = x['bh'];
-  if (obj.disjointSets.link(tempA, tempB)) {
+  if (obj.currentSets.link(tempA, tempB)) {
     obj.changed.dispatch();
   }
 });
 
 registerRPC(CLEAR_METHOD_ID, function(x) {
   let obj = <SharedDisjointUint64Sets>this.get(x['id']);
-  if (obj.disjointSets.clear()) {
+  if (obj.currentSets.clear()) {
     obj.changed.dispatch();
   }
 });
