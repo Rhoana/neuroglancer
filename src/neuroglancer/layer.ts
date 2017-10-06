@@ -427,7 +427,7 @@ export class LayerManager extends RefCounted {
     else {
       userLayer.handleAction(action);
     }
-    // Handle render layers the same regardless
+    // Unused: render layer handler always empty
     for (let renderLayer of userLayer.renderLayers) {
       if (!renderLayer.ready) {
         continue;
