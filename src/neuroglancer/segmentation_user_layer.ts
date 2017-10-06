@@ -185,17 +185,6 @@ export class SegmentationUserLayer extends UserLayer implements EditorLayer {
     this.addRenderLayer(this.meshLayer);
   }
 
-  mergeOne(setId: Uint64, newId: Uint64) {
-    let {segmentEquivalences} = this.displayState;
-    segmentEquivalences.link(setId, newId);
-  }
-
-  mergeMany(setId: Uint64, newIds: IterableIterator<Uint64>) {
-    for (let newId of newIds) {
-      this.mergeOne(setId, newId);
-    }
-  }
-
   toJSON() {
     let x: any = {'type': 'segmentation'};
     x['source'] = this.volumePath;
@@ -245,6 +234,11 @@ export class SegmentationUserLayer extends UserLayer implements EditorLayer {
 
   makeDropdown(element: HTMLDivElement) {
     return new SegmentationDropdown(element, this);
+  }
+
+  mergeOne(setId: Uint64, newId: Uint64) {
+    let {segmentEquivalences} = this.displayState;
+    segmentEquivalences.link(setId, newId);
   }
 
   handleEditorAction(action: string, editorState: EditorState) {
@@ -302,6 +296,9 @@ export class SegmentationUserLayer extends UserLayer implements EditorLayer {
       case 'clear-segments': {
         this.displayState.visibleSegments.clear();
         break;
+      }
+      case 'save': {
+        console.log('saving');
       }
       case 'select': {
         let {segmentSelectionState} = this.displayState;

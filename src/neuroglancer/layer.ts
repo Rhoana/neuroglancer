@@ -85,7 +85,6 @@ export class UserLayerDropdown extends RefCounted {
 
 export interface EditorLayer extends UserLayer {
   handleEditorAction: (action: string, editorState: EditorState) => void;
-  mergeMany : (setId: Uint64, newIds: IterableIterator<Uint64>) => void;
 }
 
 export function isEditorLayer(layer: any): layer is EditorLayer {

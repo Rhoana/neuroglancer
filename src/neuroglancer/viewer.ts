@@ -378,7 +378,7 @@ export class Viewer extends RefCounted implements ViewerState {
   }
 
   saveAllEdits() {
-    
+    this.layerManager.invokeAction('save');
   }
 
   get gl() {
