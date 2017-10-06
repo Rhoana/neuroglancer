@@ -141,6 +141,9 @@ export class UserLayer extends RefCounted {
         break;
       }
     }
+    /*
+     * Map to Equivalent IDs if segmentation
+     */
     return this.transformPickedValue(result);
   }
 

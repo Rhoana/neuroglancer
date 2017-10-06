@@ -215,6 +215,9 @@ export class SegmentationUserLayer extends UserLayer implements EditorLayer {
   }
 
   transformPickedValue(value: any) {
+    /*
+     * Map to Equivalent IDs
+     */
     if (value == null) {
       return value;
     }
