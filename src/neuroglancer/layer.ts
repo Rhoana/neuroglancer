@@ -135,6 +135,7 @@ export class UserLayer extends RefCounted {
       if (!layer.ready) {
         continue;
       }
+      // Get selection from top render layer
       result = layer.getValueAt(position);
       if (result !== undefined) {
         break;
