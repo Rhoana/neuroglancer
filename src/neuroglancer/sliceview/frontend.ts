@@ -240,7 +240,7 @@ export class SliceView extends Base {
 
   maybeUpdateVisibleChunks() {
     if (!this.visibleChunksStale && !this.visibleSourcesStale) {
-      // console.log("Not updating visible chunks");
+      // Both Chunks and Sources need no update
       return false;
     }
     // console.log("Updating visible");

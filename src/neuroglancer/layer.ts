@@ -557,6 +557,7 @@ export class LayerSelectedValues extends RefCounted {
       for (let layer of this.layerManager.managedLayers) {
         let userLayer = layer.layer;
         if (layer.visible && userLayer) {
+          // Store seleceted value from mouse position in user layer
           values.set(userLayer, userLayer.getValueAt(position, mouseState));
         }
       }
