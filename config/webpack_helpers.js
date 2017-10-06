@@ -159,8 +159,8 @@ function getBaseConfig(options) {
 
         // Patched version of jpgjs.
         'jpgjs': resolveReal(__dirname, '../third_party/jpgjs/jpg.js'),
-        // Patched version of dojo controller.
-        'dojoControl': resolveReal(__dirname, '../third_party/dojo/controller.js'),
+        // Patched version of dojo messenger.
+        'dojo_websocket': resolveReal(__dirname, '../third_party/dojo/websocket.js'),
       },
       extraResolveAliases, options.resolveAliases || {});
   let baseConfig = {

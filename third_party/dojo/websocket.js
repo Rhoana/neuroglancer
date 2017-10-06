@@ -1,20 +1,13 @@
-var J = J || {};
-
-J.websocket = function(viewer) {
-
-  this._viewer = viewer;
+var dojoWebsocket = function(viewer, hostname) {
 
   this._socket = null;
+  this._viewer = viewer;
 
   this.connect();
 
-};
-
-J.websocket.prototype.connect = function() {
-
   try {
 
-    var host = "ws://"+window.location.hostname+":"+window.location.port+"/ws";  
+    var host = "ws://"+hostname+"/ws";  
     this._socket = new WebSocket(host);
 
     this._socket.onopen = this.on_open.bind(this);
@@ -27,25 +20,25 @@ J.websocket.prototype.connect = function() {
 
 };
 
-J.websocket.prototype.on_open = function() {
+dojoWebsocket.prototype.on_open = function() {
 
   console.log('Established websocket connection.');
 
 };
 
-J.websocket.prototype.on_message = function(m) {
+dojoWebsocket.prototype.on_message = function(m) {
 
-    this._viewer._controller.receive(m);
+  this._viewer.handleMessage(m);
 
 };
 
-J.websocket.prototype.send = function(m) {
+dojoWebsocket.prototype.send = function(m) {
 
   this._socket.send(m);
 
 };
 
-J.websocket.prototype.on_close = function() {
+dojoWebsocket.prototype.on_close = function() {
 
   console.log('Websocket connection dropped.');
 
