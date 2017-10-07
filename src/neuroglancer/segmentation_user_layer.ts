@@ -18,7 +18,7 @@ import {CoordinateTransform} from 'neuroglancer/coordinate_transform';
 import {getMeshSource, getSkeletonSource} from 'neuroglancer/datasource/factory';
 import {EditorLayer, UserLayer, UserLayerDropdown} from 'neuroglancer/layer';
 import {LayerListSpecification, registerLayerType, registerVolumeLayerType} from 'neuroglancer/layer_specification';
-import {getVolumeWithStatusMessage} from 'neuroglancer/layer_specification';
+import {getVolumeWithStatusMessage, tryWebSocket} from 'neuroglancer/layer_specification';
 import {MeshSource} from 'neuroglancer/mesh/frontend';
 import {MeshLayer} from 'neuroglancer/mesh/frontend';
 import {Overlay} from 'neuroglancer/overlay';
@@ -116,10 +116,15 @@ export class SegmentationUserLayer extends UserLayer implements EditorLayer {
     let volumePath = this.volumePath = verifyOptionalString(x['source']);
     let meshPath = this.meshPath = x['mesh'] === null ? null : verifyOptionalString(x['mesh']);
     let skeletonsPath = this.skeletonsPath = verifyOptionalString(x['skeletons']);
+
     if (volumePath !== undefined) {
-      getVolumeWithStatusMessage(manager.chunkManager, volumePath, {
+      /*
+       * Get the info for segmentation volume
+       */
+      let infoPromise = getVolumeWithStatusMessage(manager.chunkManager, volumePath, {
         volumeType: VolumeType.SEGMENTATION
-      }).then(volume => {
+      });
+      infoPromise.then(volume => {
         if (!this.wasDisposed) {
           this.addRenderLayer(new SegmentationRenderLayer(volume, this.displayState));
           if (meshPath === undefined) {
@@ -129,8 +134,15 @@ export class SegmentationUserLayer extends UserLayer implements EditorLayer {
             }
           }
         }
+        /*
+        * Try to make the websocket connection
+        */
+        let socketPromise = tryWebSocket(this, volume);
       });
     }
+    /*
+     * Set up a websocket Connection for segmentation layer
+     */
 
     if (meshPath != null) {
       getMeshSource(manager.chunkManager, meshPath).then(meshSource => {
