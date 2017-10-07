@@ -42,6 +42,7 @@ import {Uint64EntryWidget} from 'neuroglancer/widget/uint64_entry_widget';
 import {SharedWatchableValue} from 'neuroglancer/shared_watchable_value';
 import {Bounds} from 'neuroglancer/segmentation_display_state/base';
 import {vec3} from 'neuroglancer/util/geom';
+import {WebSocket} from 'dojo_websocket';
 
 require('neuroglancer/noselect.css');
 require('./segmentation_user_layer.css');
@@ -70,6 +71,7 @@ export class SegmentationUserLayer extends UserLayer implements EditorLayer {
         shaderError: makeWatchableShaderError(),
       };
   volumePath: string|undefined;
+  webSocket: WebSocket|undefined;
 
   /**
    * If meshPath is undefined, a default mesh source provided by the volume may be used.  If
@@ -138,6 +140,9 @@ export class SegmentationUserLayer extends UserLayer implements EditorLayer {
         * Try to make the websocket connection
         */
         let socketPromise = tryWebSocket(this, volume);
+        socketPromise.then((socket) => {
+          this.webSocket = socket;
+        })
       });
     }
     /*
