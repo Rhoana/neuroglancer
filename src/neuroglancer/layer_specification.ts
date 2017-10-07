@@ -27,12 +27,12 @@ import {verifyObject, verifyObjectProperty, verifyOptionalString} from 'neurogla
 import {NullarySignal, Signal} from 'neuroglancer/util/signal';
 import {Trackable} from 'neuroglancer/util/trackable';
 import {EditorLayer} from 'neuroglancer/layer';
-import {WebSocket} from 'dojo_websocket';
+import {EditorSocket} from 'dojo_websocket';
 
-export function tryWebSocket(editorLayer: EditorLayer, source: MultiscaleVolumeChunkSource): Promise<WebSocket> {
+export function trySocket(editorLayer: EditorLayer, source: MultiscaleVolumeChunkSource): Promise<EditorSocket> {
   // Promise a websocket
   return new Promise(function(resolve) {
-    return new WebSocket(editorLayer, source);
+    return new EditorSocket(editorLayer, source);
   });
 }
 

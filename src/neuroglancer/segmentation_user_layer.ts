@@ -18,7 +18,7 @@ import {CoordinateTransform} from 'neuroglancer/coordinate_transform';
 import {getMeshSource, getSkeletonSource} from 'neuroglancer/datasource/factory';
 import {EditorLayer, UserLayer, UserLayerDropdown} from 'neuroglancer/layer';
 import {LayerListSpecification, registerLayerType, registerVolumeLayerType} from 'neuroglancer/layer_specification';
-import {getVolumeWithStatusMessage, tryWebSocket} from 'neuroglancer/layer_specification';
+import {getVolumeWithStatusMessage, trySocket} from 'neuroglancer/layer_specification';
 import {MeshSource} from 'neuroglancer/mesh/frontend';
 import {MeshLayer} from 'neuroglancer/mesh/frontend';
 import {Overlay} from 'neuroglancer/overlay';
@@ -42,7 +42,7 @@ import {Uint64EntryWidget} from 'neuroglancer/widget/uint64_entry_widget';
 import {SharedWatchableValue} from 'neuroglancer/shared_watchable_value';
 import {Bounds} from 'neuroglancer/segmentation_display_state/base';
 import {vec3} from 'neuroglancer/util/geom';
-import {WebSocket} from 'dojo_websocket';
+import {EditorSocket} from 'dojo_websocket';
 
 require('neuroglancer/noselect.css');
 require('./segmentation_user_layer.css');
@@ -71,7 +71,7 @@ export class SegmentationUserLayer extends UserLayer implements EditorLayer {
         shaderError: makeWatchableShaderError(),
       };
   volumePath: string|undefined;
-  webSocket: WebSocket|undefined;
+  editorSocket: EditorSocket|undefined;
 
   /**
    * If meshPath is undefined, a default mesh source provided by the volume may be used.  If
@@ -139,9 +139,9 @@ export class SegmentationUserLayer extends UserLayer implements EditorLayer {
         /*
         * Try to make the websocket connection
         */
-        let socketPromise = tryWebSocket(this, volume);
+        let socketPromise = trySocket(this, volume);
         socketPromise.then((socket) => {
-          this.webSocket = socket;
+          this.editorSocket = socket;
         })
       });
     }

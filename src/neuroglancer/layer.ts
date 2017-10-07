@@ -16,7 +16,7 @@
 
 import debounce from 'lodash/debounce';
 import throttle from 'lodash/throttle';
-import {WebSocket} from 'dojo_websocket';
+import {EditorSocket} from 'dojo_websocket';
 import {EditorState} from 'neuroglancer/viewer_editors';
 import {RenderedPanel} from 'neuroglancer/display_context';
 import {SpatialPosition} from 'neuroglancer/navigation_state';
@@ -86,7 +86,7 @@ export class UserLayerDropdown extends RefCounted {
 
 export interface EditorLayer extends UserLayer {
   handleEditorAction: (action: string, editorState: EditorState) => void;
-  webSocket: WebSocket|undefined;
+  editorSocket: EditorSocket|undefined;
 }
 
 export function isEditorLayer(layer: any): layer is EditorLayer {

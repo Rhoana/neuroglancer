@@ -1,4 +1,4 @@
-var WebSocket = function(editorLayer, source) {
+var EditorSocket = function(editorLayer, source) {
 
   this._socket = null;
   this._editorLayer = editorLayer;
@@ -22,25 +22,25 @@ var WebSocket = function(editorLayer, source) {
 
 };
 
-WebSocket.prototype.on_open = function() {
+EditorSocket.prototype.on_open = function() {
 
   console.log('Established websocket connection.');
 
 };
 
-WebSocket.prototype.on_message = function(m) {
+EditorSocket.prototype.on_message = function(m) {
 
   this._editorLayer.handleMessage(m);
 
 };
 
-WebSocket.prototype.send = function(m) {
+EditorSocket.prototype.send = function(m) {
 
   this._socket.send(m);
 
 };
 
-WebSocket.prototype.on_close = function() {
+EditorSocket.prototype.on_close = function() {
 
   console.log('Websocket connection dropped.');
 
@@ -51,6 +51,6 @@ WebSocket.prototype.on_close = function() {
  */
 if (typeof exports !== "undefined") {
   module.exports = {
-    WebSocket: WebSocket,
+    EditorSocket: EditorSocket,
   };
 }

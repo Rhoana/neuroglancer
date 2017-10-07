@@ -24,13 +24,13 @@ declare module 'dojo_websocket' {
   import {EditorLayer} from 'neuroglancer/layer';
 
   // Wrapper for dojo websocket
-  interface WebSocket {
+  interface EditorSocket {
     send: (m: any) => void,
   }
 
-  interface WebSocketConstructor {
-    new(editorLayer: EditorLayer, source: MultiscaleVolumeChunkSource): WebSocket;
+  interface EditorSocketConstructor {
+    new(editorLayer: EditorLayer, source: MultiscaleVolumeChunkSource): EditorSocket;
   }
 
-  const WebSocket: WebSocketConstructor;
+  const EditorSocket: EditorSocketConstructor;
 }
