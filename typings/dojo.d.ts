@@ -18,14 +18,19 @@
  * Basic typings for dojo package.
  */
 
-declare module 'dojoControl' {
-  interface DojoControl {
-    receive(data: MessageEvent): void;
+declare module 'dojo_websocket' {
+
+  import {MultiscaleVolumeChunkSource} from 'neuroglancer/sliceview/volume/frontend';
+  import {EditorLayer} from 'neuroglancer/layer';
+
+  // Wrapper for dojo websocket
+  interface WebSocket {
+    send: (m: any) => void,
   }
 
-  interface DojoControlConstructor {
-    new(): DojoControl;
+  interface WebSocketConstructor {
+    new(editorLayer: EditorLayer, source: MultiscaleVolumeChunkSource): WebSocket;
   }
 
-  const DojoControl: DojoControlConstructor;
+  const WebSocket: WebSocketConstructor;
 }

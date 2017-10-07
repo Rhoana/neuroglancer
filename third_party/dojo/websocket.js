@@ -1,18 +1,20 @@
-var dojoWebsocket = function(viewer, hostname) {
+var WebSocket = function(editorLayer, source) {
 
   this._socket = null;
-  this._viewer = viewer;
-
-  this.connect();
+  this._editorLayer = editorLayer;
 
   try {
 
-    var host = "ws://"+hostname+"/ws";  
-    this._socket = new WebSocket(host);
+    // Make a path for a specitfic channel
+    var host = "ws://"+source.baseUrls[0];
+    var hostPath = `${host}/ws/${key}/${channel}`;
+
+    // Create the websocket connection
+    this._socket = new WebSocket(hostPath);
 
     this._socket.onopen = this.on_open.bind(this);
-    this._socket.onmessage = this.on_message.bind(this);
     this._socket.onclose = this.on_close.bind(this);
+    this._socket.onmessage = this.on_message.bind(this);
 
   } catch (e) {
     console.log('Websocket connection failed.');
@@ -20,26 +22,35 @@ var dojoWebsocket = function(viewer, hostname) {
 
 };
 
-dojoWebsocket.prototype.on_open = function() {
+WebSocket.prototype.on_open = function() {
 
   console.log('Established websocket connection.');
 
 };
 
-dojoWebsocket.prototype.on_message = function(m) {
+WebSocket.prototype.on_message = function(m) {
 
-  this._viewer.handleMessage(m);
+  this._editorLayer.handleMessage(m);
 
 };
 
-dojoWebsocket.prototype.send = function(m) {
+WebSocket.prototype.send = function(m) {
 
   this._socket.send(m);
 
 };
 
-dojoWebsocket.prototype.on_close = function() {
+WebSocket.prototype.on_close = function() {
 
   console.log('Websocket connection dropped.');
 
 };
+
+/*
+ * Export as module to convert to typescript
+ */
+if (typeof exports !== "undefined") {
+  module.exports = {
+    WebSocket: WebSocket,
+  };
+}
