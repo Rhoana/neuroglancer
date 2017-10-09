@@ -16,7 +16,7 @@
 
 import {ChunkManager} from 'neuroglancer/chunk_manager/frontend';
 import {DisplayContext} from 'neuroglancer/display_context';
-import {EditorState} from 'neuroglancer/viewer_editors';
+import {EditorState} from 'neuroglancer/editor/state';
 import {LayerManager, MouseSelectionState} from 'neuroglancer/layer';
 import * as L from 'neuroglancer/layout';
 import {NavigationState, OrientationState, Pose} from 'neuroglancer/navigation_state';

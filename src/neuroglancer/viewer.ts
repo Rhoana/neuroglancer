@@ -36,7 +36,7 @@ import {globalKeyboardHandlerStack, KeySequenceMap} from 'neuroglancer/util/keyb
 import {NullarySignal} from 'neuroglancer/util/signal';
 import {CompoundTrackable} from 'neuroglancer/util/trackable';
 import {DataDisplayLayout, LAYOUTS} from 'neuroglancer/viewer_layouts';
-import {EditorState, trackableEditor} from 'neuroglancer/viewer_editors';
+import {EditorState, trackableEditor} from 'neuroglancer/editor/state';
 import {ViewerState, VisibilityPrioritySpecification} from 'neuroglancer/viewer_state';
 import {WatchableVisibilityPriority} from 'neuroglancer/visibility_priority/frontend';
 import {GL} from 'neuroglancer/webgl/context';

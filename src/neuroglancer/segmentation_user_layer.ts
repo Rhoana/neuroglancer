@@ -22,7 +22,8 @@ import {getVolumeWithStatusMessage, trySocket} from 'neuroglancer/layer_specific
 import {MeshSource} from 'neuroglancer/mesh/frontend';
 import {MeshLayer} from 'neuroglancer/mesh/frontend';
 import {Overlay} from 'neuroglancer/overlay';
-import {EDITORS, EditorState, EditorSource, makeEditorSource, toEditorSource} from 'neuroglancer/viewer_editors';
+import {EDITORS, EditorState} from 'neuroglancer/editor/state';
+import {EditorSource, makeEditorSource, toEditorSource} from 'neuroglancer/editor/source';
 import {SegmentColorHash} from 'neuroglancer/segment_color';
 import {SegmentationDisplayState3D, SegmentSelectionState, Uint64MapEntry} from 'neuroglancer/segmentation_display_state/frontend';
 import {SharedDisjointUint64Sets} from 'neuroglancer/shared_disjoint_sets';

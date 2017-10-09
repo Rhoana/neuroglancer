@@ -17,7 +17,8 @@
 import debounce from 'lodash/debounce';
 import throttle from 'lodash/throttle';
 import {EditorSocket} from 'dojo_websocket';
-import {EditorState, EditorSource} from 'neuroglancer/viewer_editors';
+import {EditorState} from 'neuroglancer/editor/state';
+import {EditorSource} from 'neuroglancer/editor/source';
 import {RenderedPanel} from 'neuroglancer/display_context';
 import {SpatialPosition} from 'neuroglancer/navigation_state';
 import {RefCounted} from 'neuroglancer/util/disposable';

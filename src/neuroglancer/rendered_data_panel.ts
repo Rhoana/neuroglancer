@@ -20,7 +20,7 @@ import {NavigationState} from 'neuroglancer/navigation_state';
 import {AXES_NAMES, kAxes, vec3} from 'neuroglancer/util/geom';
 import {getWheelZoomAmount} from 'neuroglancer/util/wheel_zoom';
 import {ViewerState} from 'neuroglancer/viewer_state';
-import {EDITORS} from 'neuroglancer/viewer_editors';
+import {EDITORS} from 'neuroglancer/editor/state';
 
 require('./rendered_data_panel.css');
 
