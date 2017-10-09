@@ -29,11 +29,26 @@ import {Trackable} from 'neuroglancer/util/trackable';
 import {EditorLayer} from 'neuroglancer/layer';
 import {EditorSocket} from 'dojo_websocket';
 
-export function trySocket(editorLayer: EditorLayer, source: MultiscaleVolumeChunkSource): Promise<EditorSocket> {
+export function trySocket(editorLayer: EditorLayer): Promise<EditorSocket> {
   // Promise a websocket
-  return new Promise(function(resolve) {
-    return new EditorSocket(editorLayer, source);
+  return new Promise(function() {
+    return new EditorSocket(editorLayer);
   });
+}
+
+export function trySocketWithStatus(editorLayer: EditorLayer): Promise<EditorSocket> {
+  // Promise a websocket
+  let socketPromise = new Promise(function() {
+    return new EditorSocket(editorLayer);
+  }) as Promise<EditorSocket>;
+  // Inform user if websocket failure
+  let {host, channel} = editorLayer.editorSource;
+  let messages = {
+    initialMessage: `Trying to write to ${host}.`,
+    delay: true,
+    errorPrefix: `Cannot write to ${channel} at ${host}:`,
+  };
+  return StatusMessage.forPromise(socketPromise, messages);
 }
 
 export function getVolumeWithStatusMessage(
