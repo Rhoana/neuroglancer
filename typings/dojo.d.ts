@@ -20,7 +20,6 @@
 
 declare module 'dojo_websocket' {
 
-  import {MultiscaleVolumeChunkSource} from 'neuroglancer/sliceview/volume/frontend';
   import {EditorLayer} from 'neuroglancer/layer';
 
   // Wrapper for dojo websocket
@@ -29,7 +28,7 @@ declare module 'dojo_websocket' {
   }
 
   interface EditorSocketConstructor {
-    new(editorLayer: EditorLayer, source: MultiscaleVolumeChunkSource): EditorSocket;
+    new(editorLayer: EditorLayer): EditorSocket;
   }
 
   const EditorSocket: EditorSocketConstructor;

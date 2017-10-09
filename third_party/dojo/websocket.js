@@ -1,4 +1,4 @@
-var EditorSocket = function(editorLayer, source) {
+var EditorSocket = function(editorLayer) {
 
   this._socket = null;
   this._editorLayer = editorLayer;
@@ -6,8 +6,8 @@ var EditorSocket = function(editorLayer, source) {
   try {
 
     // Make a path for a specitfic channel
-    var host = "ws://"+source.baseUrls[0];
-    var hostPath = `${host}/ws/${key}/${channel}`;
+    var {host, key, channel} = editorLayer.editorSource;
+    var hostPath = `ws://${host}/ws/${key}/${channel}`;
 
     // Create the websocket connection
     this._socket = new WebSocket(hostPath);
