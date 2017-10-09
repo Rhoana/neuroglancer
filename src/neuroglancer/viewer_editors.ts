@@ -14,9 +14,13 @@
  * limitations under the License.
  */
 
+// For Editor State
 import {TrackableValue} from 'neuroglancer/trackable_value';
 import {RefCounted} from 'neuroglancer/util/disposable';
 import {Uint64} from 'neuroglancer/util/uint64';
+// For Editor Source
+import {MultiscaleVolumeChunkSource as GenericSource} from 'neuroglancer/sliceview/volume/frontend';
+import {MultiscaleVolumeChunkSource as NDStoreSource} from 'neuroglancer/datasource/ndstore/frontend';
 
 /*
  * Names of all valid editors
@@ -40,4 +44,31 @@ export function trackableEditor(editor: number = EDITORS.NONE) {
 export interface EditorState {
   editor: TrackableValue<number>;
   segment: Uint64 | undefined;
+}
+
+/*
+ * Begin EditorSource definition
+ */
+export interface EditorSource {
+    channel: string|undefined;
+    host: string|undefined;
+    key: string|undefined;
+}
+export function makeEditorSource(h?:string, k?:string, c?:string): EditorSource {
+  return {
+    channel: c,
+    host: h,
+    key: k,
+  } as EditorSource;
+}
+export function toEditorSource(source?:GenericSource): EditorSource {
+  // Define editor source for ND Store
+  if (source instanceof NDStoreSource) {
+    let {channel, key} = source;
+    let host = source.baseUrls[0];
+    // Convert NDStore Source to editor source
+    return makeEditorSource(host,key,channel);
+  }
+  // Empty editor source
+  return makeEditorSource();
 }

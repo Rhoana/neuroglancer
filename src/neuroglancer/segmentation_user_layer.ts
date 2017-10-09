@@ -22,7 +22,7 @@ import {getVolumeWithStatusMessage, trySocket} from 'neuroglancer/layer_specific
 import {MeshSource} from 'neuroglancer/mesh/frontend';
 import {MeshLayer} from 'neuroglancer/mesh/frontend';
 import {Overlay} from 'neuroglancer/overlay';
-import {EDITORS, EditorState} from 'neuroglancer/viewer_editors';
+import {EDITORS, EditorState, EditorSource, makeEditorSource, toEditorSource} from 'neuroglancer/viewer_editors';
 import {SegmentColorHash} from 'neuroglancer/segment_color';
 import {SegmentationDisplayState3D, SegmentSelectionState, Uint64MapEntry} from 'neuroglancer/segmentation_display_state/frontend';
 import {SharedDisjointUint64Sets} from 'neuroglancer/shared_disjoint_sets';
@@ -72,6 +72,7 @@ export class SegmentationUserLayer extends UserLayer implements EditorLayer {
       };
   volumePath: string|undefined;
   editorSocket: EditorSocket|undefined;
+  editorSource = makeEditorSource();
 
   /**
    * If meshPath is undefined, a default mesh source provided by the volume may be used.  If
@@ -136,10 +137,12 @@ export class SegmentationUserLayer extends UserLayer implements EditorLayer {
             }
           }
         }
+        // Set editor source from the volume
+        this.editorSource = toEditorSource(volume);
         /*
         * Try to make the websocket connection
         */
-        let socketPromise = trySocket(this, volume);
+        let socketPromise = trySocket(this);
         socketPromise.then((socket) => {
           this.editorSocket = socket;
         })
