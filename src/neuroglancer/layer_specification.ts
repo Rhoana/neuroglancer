@@ -26,7 +26,7 @@ import {vec3} from 'neuroglancer/util/geom';
 import {verifyObject, verifyObjectProperty, verifyOptionalString} from 'neuroglancer/util/json';
 import {NullarySignal, Signal} from 'neuroglancer/util/signal';
 import {Trackable} from 'neuroglancer/util/trackable';
-import {EditorLayer} from 'neuroglancer/layer';
+import {EditorLayer} from 'neuroglancer/editor/layer';
 import {EditorSocket} from 'dojo_websocket';
 
 export function trySocket(editorLayer: EditorLayer): Promise<EditorSocket> {

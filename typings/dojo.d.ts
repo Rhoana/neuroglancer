@@ -20,7 +20,7 @@
 
 declare module 'dojo_websocket' {
 
-  import {EditorLayer} from 'neuroglancer/layer';
+  import {EditorLayer} from 'neuroglancer/editor/layer';
 
   // Wrapper for dojo websocket
   interface EditorSocket {

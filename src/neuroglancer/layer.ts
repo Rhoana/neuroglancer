@@ -16,9 +16,8 @@
 
 import debounce from 'lodash/debounce';
 import throttle from 'lodash/throttle';
-import {EditorSocket} from 'dojo_websocket';
 import {EditorState} from 'neuroglancer/editor/state';
-import {EditorSource} from 'neuroglancer/editor/source';
+import {EditorLayer, toEditorLayer, isEditorLayer} from 'neuroglancer/editor/layer';
 import {RenderedPanel} from 'neuroglancer/display_context';
 import {SpatialPosition} from 'neuroglancer/navigation_state';
 import {RefCounted} from 'neuroglancer/util/disposable';
@@ -83,27 +82,6 @@ export class VisibilityTrackedRenderLayer extends RenderLayer {
 export class UserLayerDropdown extends RefCounted {
   onShow() {}
   onHide() {}
-}
-
-export interface EditorLayer extends UserLayer {
-  handleEditorAction: (action: string, editorState: EditorState) => void;
-  editorSocket: EditorSocket|undefined;
-  editorSource: EditorSource;
-}
-
-export function isEditorLayer(layer: any): layer is EditorLayer {
-  return (<EditorLayer>layer).handleEditorAction !== undefined;
-}
-
-export function toEditorLayer(layer: any): EditorLayer | undefined {
-  if (isEditorLayer(layer)) {
-    return layer;
-  }
-  return undefined;
-}
-
-export function hasVisibleEditorLayer(managedLayer: ManagedUserLayer): boolean {
-  return managedLayer.visible && isEditorLayer(managedLayer.layer);
 }
 
 export class UserLayer extends RefCounted {
@@ -325,7 +303,9 @@ export class LayerManager extends RefCounted {
   get editorLayer(): EditorLayer | undefined {
     // Get the top visible editor layer
     let topLayers = [...this.managedLayers].reverse();
-    let topLayer = topLayers.find(hasVisibleEditorLayer);
+    let topLayer = topLayers.find((layer) => {
+      return layer.visible && isEditorLayer(layer.layer);
+    });
     // Double check that the layer is in fact an editor layer
     let editorLayer = topLayer ? topLayer.layer : {};
     return toEditorLayer(editorLayer);
@@ -417,10 +397,6 @@ export class LayerManager extends RefCounted {
           }
         }
     };
-  }
-
-  matchEditorLayer(userLayer: UserLayer): boolean {
-    return this.editorLayer == toEditorLayer(userLayer);
   }
 
   uniqueAction(action: string, userLayer?: UserLayer, editorState?: EditorState) {

@@ -16,12 +16,13 @@
 
 import {CoordinateTransform} from 'neuroglancer/coordinate_transform';
 import {getMeshSource, getSkeletonSource} from 'neuroglancer/datasource/factory';
-import {EditorLayer, UserLayer, UserLayerDropdown} from 'neuroglancer/layer';
+import {UserLayer, UserLayerDropdown} from 'neuroglancer/layer';
 import {LayerListSpecification, registerLayerType, registerVolumeLayerType} from 'neuroglancer/layer_specification';
 import {getVolumeWithStatusMessage, trySocket} from 'neuroglancer/layer_specification';
 import {MeshSource} from 'neuroglancer/mesh/frontend';
 import {MeshLayer} from 'neuroglancer/mesh/frontend';
 import {Overlay} from 'neuroglancer/overlay';
+import {EditorLayer} from 'neuroglancer/editor/layer';
 import {EDITORS, EditorState} from 'neuroglancer/editor/state';
 import {EditorSource, makeEditorSource, toEditorSource} from 'neuroglancer/editor/source';
 import {SegmentColorHash} from 'neuroglancer/segment_color';
