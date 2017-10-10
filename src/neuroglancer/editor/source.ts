@@ -36,7 +36,8 @@ export function toEditorSource(source?:GenericSource): EditorSource {
   // Define editor source for ND Store
   if (source instanceof NDStoreSource) {
     let {channel, key} = source;
-    let host = source.baseUrls[0];
+    // Get the hostname after the protocol
+    let host = source.baseUrls[0].split('://').pop();
     // Convert NDStore Source to editor source
     return makeEditorSource(host,key,channel);
   }
