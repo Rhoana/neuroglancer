@@ -18,13 +18,13 @@ import {CoordinateTransform} from 'neuroglancer/coordinate_transform';
 import {getMeshSource, getSkeletonSource} from 'neuroglancer/datasource/factory';
 import {UserLayer, UserLayerDropdown} from 'neuroglancer/layer';
 import {LayerListSpecification, registerLayerType, registerVolumeLayerType} from 'neuroglancer/layer_specification';
-import {getVolumeWithStatusMessage, trySocket} from 'neuroglancer/layer_specification';
+import {getVolumeWithStatusMessage, sendSocketWithStatus} from 'neuroglancer/layer_specification';
 import {MeshSource} from 'neuroglancer/mesh/frontend';
 import {MeshLayer} from 'neuroglancer/mesh/frontend';
 import {Overlay} from 'neuroglancer/overlay';
 import {EditorLayer} from 'neuroglancer/editor/layer';
 import {EDITORS, EditorState} from 'neuroglancer/editor/state';
-import {EditorSource, makeEditorSource, toEditorSource} from 'neuroglancer/editor/source';
+import {EditorSource, toEditorSource} from 'neuroglancer/editor/source';
 import {SegmentColorHash} from 'neuroglancer/segment_color';
 import {SegmentationDisplayState3D, SegmentSelectionState, Uint64MapEntry} from 'neuroglancer/segmentation_display_state/frontend';
 import {SharedDisjointUint64Sets} from 'neuroglancer/shared_disjoint_sets';
@@ -73,8 +73,8 @@ export class SegmentationUserLayer extends UserLayer implements EditorLayer {
         shaderError: makeWatchableShaderError(),
       };
   volumePath: string|undefined;
-  editorSocket: EditorSocket|undefined;
-  editorSource = makeEditorSource();
+  editorSocket: EditorSocket = new EditorSocket(this);
+  editorSource: EditorSource = toEditorSource();
 
   /**
    * If meshPath is undefined, a default mesh source provided by the volume may be used.  If
@@ -143,11 +143,13 @@ export class SegmentationUserLayer extends UserLayer implements EditorLayer {
         this.editorSource = toEditorSource(volume);
         /*
         * Try to make the websocket connection
-        */
-        let socketPromise = trySocket(this);
-        socketPromise.then((socket) => {
-          this.editorSocket = socket;
-        })
+         */
+        let openPromise = new Promise((resolve, reject) => {
+          this.editorSocket.open(resolve, reject);
+        });
+        //openPromise.then((msg) => {
+          //console.log(msg);
+        //});
       });
     }
     /*
@@ -323,7 +325,11 @@ export class SegmentationUserLayer extends UserLayer implements EditorLayer {
         break;
       }
       case 'save': {
-        console.log('saving');
+        // Try to create a new websocket
+        let sendPromise = sendSocketWithStatus(this, []);
+        //sendPromise.then((msg) => {
+        //  console.log('saving new ws');
+        //});
       }
       case 'select': {
         let {segmentSelectionState} = this.displayState;

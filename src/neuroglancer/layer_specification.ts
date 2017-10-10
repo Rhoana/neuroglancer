@@ -29,19 +29,13 @@ import {Trackable} from 'neuroglancer/util/trackable';
 import {EditorLayer} from 'neuroglancer/editor/layer';
 import {EditorSocket} from 'dojo_websocket';
 
-export function trySocket(editorLayer: EditorLayer): Promise<EditorSocket> {
+export function sendSocketWithStatus(editorLayer: EditorLayer, m: any): Promise<string> {
   // Promise a websocket
-  return new Promise(function() {
-    return new EditorSocket(editorLayer);
-  });
-}
-
-export function trySocketWithStatus(editorLayer: EditorLayer): Promise<EditorSocket> {
-  // Promise a websocket
-  let socketPromise = new Promise(function() {
-    return new EditorSocket(editorLayer);
-  }) as Promise<EditorSocket>;
-  // Inform user if websocket failure
+  let socketPromise = new Promise(function(resolve, reject) {
+    // Send a message through the websocket
+    editorLayer.editorSocket.send(resolve, reject, []);
+  }) as Promise<string>;
+  // Notify of websocket failure to send
   let {host, channel} = editorLayer.editorSource;
   let messages = {
     initialMessage: `Trying to write to ${host}.`,
