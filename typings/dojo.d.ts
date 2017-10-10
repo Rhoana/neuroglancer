@@ -22,9 +22,15 @@ declare module 'dojo_websocket' {
 
   import {EditorLayer} from 'neuroglancer/editor/layer';
 
+  // Fulfills a promise for a websocket
+  type fn = (msg: string) => void;
+
   // Wrapper for dojo websocket
   interface EditorSocket {
-    send: (m: any) => void,
+    // returns link state
+    open: (resolve: fn, reject: fn) => void,
+    // Takes an object to jsonify
+    send: (resolve: fn, reject: fn, m: any) => void,
   }
 
   interface EditorSocketConstructor {
