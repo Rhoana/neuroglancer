@@ -30,7 +30,7 @@ declare module 'dojo_websocket' {
     // returns link state
     open: (resolve: fn, reject: fn) => void,
     // Takes an object to jsonify
-    send: (resolve: fn, reject: fn, m: any) => void,
+    send: (resolve: fn, reject: fn, m: string) => void,
   }
 
   interface EditorSocketConstructor {

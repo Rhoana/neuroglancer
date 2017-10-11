@@ -53,10 +53,10 @@ EditorSocket.prototype._formatPath = function() {
 
 EditorSocket.prototype.on_message = function(m) {
   // Send incoming message to editor
-  this._editorLayer.handleMessage(m);
+  this._editorLayer.handleMessage(m.data);
 };
 
-EditorSocket.prototype.on_open = function(resolve) {
+EditorSocket.prototype.on_open = function(resolve, lol) {
   // Resolve the promise of an open socket
   resolve('Established websocket.');
 };
