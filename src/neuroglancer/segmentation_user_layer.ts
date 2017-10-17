@@ -147,9 +147,6 @@ export class SegmentationUserLayer extends UserLayer implements EditorLayer {
         let openPromise = new Promise((resolve, reject) => {
           this.editorSocket.open(resolve, reject);
         });
-        //openPromise.then((msg) => {
-          //console.log(msg);
-        //});
       });
     }
     /*
@@ -268,15 +265,39 @@ export class SegmentationUserLayer extends UserLayer implements EditorLayer {
     segmentEquivalences.link(setId, newId);
   }
 
-  handleEditorAction(action: string, editorState: EditorState) {
-    // Handle action based on editor
-    switch (editorState.editor.value) {
-      case EDITORS.MERGE: {
-        this.handleMergeAction(action, editorState);
+  currentMerges(): Array<Array<string>> {
+    let {segmentEquivalences} = this.displayState;
+    return segmentEquivalences.toJSON();
+  }
+
+  restoreSaved(merges: Array<Array<string>>|undefined) {
+    if (merges !== undefined) {
+      let {segmentEquivalences} = this.displayState;
+      segmentEquivalences.restoreSaved(merges);
+    }
+  }
+
+  handleMessage(msg: string) {
+    // Parse JSON message
+    let message = JSON.parse(msg);
+    // Handle any action
+    switch (message.action) {
+      case 'restore': {
+        // Restore all saved merges
+        let merge = message.merge;
+        this.restoreSaved(merge);
         break;
       }
-      default: {
-        this.handleAction(action);
+      case 'save': {
+        console.log('saved!');
+        // TODO: Remove the saved merges from current merges
+        // TODO: segmentEquivalences.clearCurrent(merges);
+        // TEMP: Remove all current and saved merges
+        let {segmentEquivalences} = this.displayState;
+        segmentEquivalences.clearAll();
+        // Restore all saved merges
+        let merge = message.merge;
+        this.restoreSaved(merge);
         break;
       }
     }
@@ -314,6 +335,20 @@ export class SegmentationUserLayer extends UserLayer implements EditorLayer {
     }
   }
 
+  handleEditorAction(action: string, editorState: EditorState) {
+    // Handle action based on editor
+    switch (editorState.editor.value) {
+      case EDITORS.MERGE: {
+        this.handleMergeAction(action, editorState);
+        break;
+      }
+      default: {
+        this.handleAction(action);
+        break;
+      }
+    }
+  }
+
   handleAction(action: string) {
     switch (action) {
       case 'recolor': {
@@ -325,11 +360,14 @@ export class SegmentationUserLayer extends UserLayer implements EditorLayer {
         break;
       }
       case 'save': {
-        // Try to create a new websocket
-        let sendPromise = sendSocketWithStatus(this, []);
-        //sendPromise.then((msg) => {
-        //  console.log('saving new ws');
-        //});
+        // Get current merges
+        let merge = this.currentMerges();
+        let msg = JSON.stringify({
+          action: 'save',
+          merge: merge,
+        });
+        // Send current merges via websocket
+        let sendPromise = sendSocketWithStatus(this, msg);
       }
       case 'select': {
         let {segmentSelectionState} = this.displayState;

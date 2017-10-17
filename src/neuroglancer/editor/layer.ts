@@ -23,6 +23,7 @@ import {EditorSocket} from 'dojo_websocket';
  */
 export interface EditorLayer extends UserLayer {
   handleEditorAction: (action: string, editorState: EditorState) => void;
+  handleMessage: (msg: string) => void;
   editorSocket: EditorSocket;
   editorSource: EditorSource;
 }
