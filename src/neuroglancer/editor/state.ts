@@ -23,9 +23,9 @@ import {Uint64} from 'neuroglancer/util/uint64';
  */
 export const enum EDITORS {
   NONE = 0,
-  MERGE = 1,
-  SPLIT = 2,
-  TOTAL = 3,
+  MERGE = 0,
+  SPLIT = 1,
+  TOTAL = 2,
 };
 
 /*
