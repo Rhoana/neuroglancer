@@ -48,7 +48,9 @@ EditorSocket.prototype.send = function(resolve, reject, m) {
 EditorSocket.prototype._formatPath = function() {
   // Make a path for a specitfic channel
   var {host, key, channel} = this._editorLayer.editorSource;
-  return `wss://${host}/ws/${key}/${channel}`;
+  // Use ws if http and wss if https
+  var wss = 'ws'+location.protocol.substr(4).split(':')[0];
+  return `${wss}://${host}/ws/${key}/${channel}`;
 };
 
 EditorSocket.prototype.on_message = function(m) {
