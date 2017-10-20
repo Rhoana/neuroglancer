@@ -284,7 +284,7 @@ export class Viewer extends RefCounted implements ViewerState {
       if (options.showLocation) {
         rowElements.push(L.withFlex(1, element => new PositionStatusPanel(element, this)));
       }
-      if (options.showHelpButton) {
+      if (options.showSaveButton) {
         rowElements.push(element => {
           let button = document.createElement('button');
           button.className = 'save-button';
