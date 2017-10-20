@@ -57,23 +57,26 @@ export class UrlHashBinding extends RefCounted {
    * Check if layer changed
    */
   checkLayerChange(): boolean {
-    let is_changed = false;
     // If root has children
-    if (this.root instanceof CompoundTrackable) { 
-      let layerState = this.root.children.get('layers');
-      if (layerState) {
-        // Check if layer change count has increased
-        let generation = layerState.changed.count;
-        if (generation !== this.prevLayerGeneration) {
-          // Only change if if not first generation
-          if (this.prevLayerGeneration !== undefined) {
-            is_changed = true; 
-          }
-          this.prevLayerGeneration = generation; 
-        }
-      }
+    if (!(this.root instanceof CompoundTrackable)) {
+      return false;
     }
-    return is_changed;
+    let layerState = this.root.children.get('layers');
+    if (layerState === undefined) {
+      return false;
+    }
+    // Check if layer change count has increased
+    let generation = layerState.changed.count;
+    if (generation === this.prevLayerGeneration) {
+      return false;
+    }
+    // No change for the first generation
+    if (this.prevLayerGeneration === undefined) {
+      this.prevLayerGeneration = generation; 
+      return false;
+    }
+    this.prevLayerGeneration = generation; 
+    return true;
   }
 
   /*
