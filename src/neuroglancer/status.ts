@@ -28,7 +28,7 @@ export class StatusMessage {
   private timer: number|null;
   constructor(delay: Delay = false) {
     if (statusContainer === null) {
-      statusContainer = document.createElement('ul');
+      statusContainer = document.createElement('div');
       statusContainer.id = 'statusContainer';
       // Add button to dismiss all
       let button = document.createElement('button');
@@ -37,7 +37,7 @@ export class StatusMessage {
       statusContainer.appendChild(button);
       document.body.appendChild(statusContainer);
     }
-    let element = document.createElement('li');
+    let element = document.createElement('div');
     this.element = element;
     if (delay === true) {
       delay = DEFAULT_STATUS_DELAY;

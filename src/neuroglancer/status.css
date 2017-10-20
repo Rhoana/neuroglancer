@@ -28,7 +28,7 @@
   display: none;
 }
 
-#statusContainer li {
+#statusContainer div {
   width: 100vw;
   max-height: 25vh;
   overflow-y: auto;
