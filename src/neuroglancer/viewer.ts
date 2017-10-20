@@ -36,7 +36,7 @@ import {globalKeyboardHandlerStack, KeySequenceMap} from 'neuroglancer/util/keyb
 import {NullarySignal} from 'neuroglancer/util/signal';
 import {CompoundTrackable} from 'neuroglancer/util/trackable';
 import {DataDisplayLayout, LAYOUTS} from 'neuroglancer/viewer_layouts';
-import {EditorState, trackableEditor} from 'neuroglancer/editor/state';
+import {EditorState, trackableEditor, editorUI} from 'neuroglancer/editor/state';
 import {ViewerState, VisibilityPrioritySpecification} from 'neuroglancer/viewer_state';
 import {WatchableVisibilityPriority} from 'neuroglancer/visibility_priority/frontend';
 import {GL} from 'neuroglancer/webgl/context';
@@ -79,6 +79,7 @@ export class DataManagementContext extends RefCounted {
 }
 
 export interface UIOptions {
+  showEditOption: boolean;
   showSaveButton: boolean;
   showHelpButton: boolean;
   showLayerDialog: boolean;
@@ -91,6 +92,7 @@ export interface ViewerOptions extends UIOptions, VisibilityPrioritySpecificatio
 }
 
 const defaultViewerOptions = {
+  showEditOption: true,
   showSaveButton: true,
   showHelpButton: true,
   showLayerDialog: true,
@@ -124,8 +126,9 @@ export class Viewer extends RefCounted implements ViewerState {
   keyCommands = new Map<string, (this: Viewer) => void>();
   layerSpecification: LayerListSpecification;
   layoutName = new TrackableValue<string>(LAYOUTS[0][0], validateLayoutName);
+  // First editor is first UI option
   editorState = <EditorState> {
-    editor: trackableEditor(),
+    editor: trackableEditor(editorUI.keys().next().value),
     segment: undefined,
   }
 
@@ -278,16 +281,39 @@ export class Viewer extends RefCounted implements ViewerState {
 
     let uiElements: L.Handler[] = [];
 
-    let {showSaveButton, showHelpButton, showLocation} = options;
-    if (showSaveButton || showHelpButton || showLocation) {
+    let {showHelpButton, showLocation} = options;
+    let {showEditOption, showSaveButton} = options;
+    let showEditTools = showEditOption || showSaveButton;
+    // All these options require the nav bar
+    if (showEditTools || showHelpButton || showLocation) {
       let rowElements: L.Handler[] = [];
       if (options.showLocation) {
         rowElements.push(L.withFlex(1, element => new PositionStatusPanel(element, this)));
       }
+      if (options.showEditOption) {
+        rowElements.push(element => {
+          let select = document.createElement('select');
+          select.id = 'edit-option';
+          // Add option for each editor
+          editorUI.forEach((name, v) => {
+            let opt = document.createElement('option');
+            opt.textContent = name;
+            opt.value = v.toString();
+            select.appendChild(opt);
+          });
+          element.appendChild(select);
+          // Set editor state when user selects option
+          this.registerEventListener(select, 'change', () => {
+            let value = parseInt(select.value, 10);
+            let {editor} = this.editorState;
+            editor.restoreState(value);
+          });
+        });
+      }
       if (options.showSaveButton) {
         rowElements.push(element => {
           let button = document.createElement('button');
-          button.className = 'save-button';
+          button.id = 'save-button';
           button.textContent = 'save';
           button.title = 'Save';
           element.appendChild(button);
@@ -299,7 +325,7 @@ export class Viewer extends RefCounted implements ViewerState {
       if (options.showHelpButton) {
         rowElements.push(element => {
           let button = document.createElement('button');
-          button.className = 'help-button';
+          button.id = 'help-button';
           button.textContent = '?';
           button.title = 'Help';
           element.appendChild(button);
@@ -364,6 +390,15 @@ export class Viewer extends RefCounted implements ViewerState {
   toggleEditor() {
     let {editor} = this.editorState;
     editor.restoreState(editor.value + 1);
+    // Set the selector if possible
+    let elem = document.getElementById('edit-option');
+    if (elem) {
+      let select = elem as HTMLInputElement;
+      // Show editor state if in dropdown
+      if (editorUI.has(editor.value)) {
+        select.value = editor.value.toString();
+      }
+    }
   }
 
   toggleLayout() {
