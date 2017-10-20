@@ -29,8 +29,20 @@ import {Trackable} from 'neuroglancer/util/trackable';
 import {EditorLayer} from 'neuroglancer/editor/layer';
 import {EditorSocket} from 'dojo_websocket';
 
+/*
+ * Show status message for websocket connection
+ */
+export function showEditStatus(editorLayer: EditorLayer, notice: string) {
+  // Present status message regarding editor source
+  let {host, channel} = editorLayer.editorSource;
+  let notification = `${notice}: ${channel} at ${host}`;
+  StatusMessage.showMessage(notification);
+}
+
+/*
+ * Produce error message if no websocket connection
+ */
 export function sendSocketWithStatus(editorLayer: EditorLayer, msg: string): Promise<string> {
-  // Promise a websocket
   let socketPromise = new Promise(function(resolve, reject) {
     // Send a message through the websocket
     editorLayer.editorSocket.send(resolve, reject, msg);

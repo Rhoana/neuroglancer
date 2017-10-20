@@ -18,7 +18,7 @@ import {CoordinateTransform} from 'neuroglancer/coordinate_transform';
 import {getMeshSource, getSkeletonSource} from 'neuroglancer/datasource/factory';
 import {UserLayer, UserLayerDropdown} from 'neuroglancer/layer';
 import {LayerListSpecification, registerLayerType, registerVolumeLayerType} from 'neuroglancer/layer_specification';
-import {getVolumeWithStatusMessage, sendSocketWithStatus} from 'neuroglancer/layer_specification';
+import {getVolumeWithStatusMessage, sendSocketWithStatus, showEditStatus} from 'neuroglancer/layer_specification';
 import {MeshSource} from 'neuroglancer/mesh/frontend';
 import {MeshLayer} from 'neuroglancer/mesh/frontend';
 import {Overlay} from 'neuroglancer/overlay';
@@ -289,7 +289,7 @@ export class SegmentationUserLayer extends UserLayer implements EditorLayer {
         break;
       }
       case 'save': {
-        console.log('saved!');
+        showEditStatus(this, 'Successfully saved');
         // TODO: Remove the saved merges from current merges
         // TODO: segmentEquivalences.clearCurrent(merges);
         // TEMP: Remove all current and saved merges

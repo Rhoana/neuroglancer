@@ -24,6 +24,10 @@
   padding: 0px;
 }
 
+#statusContainer > button:only-child {
+  display: none;
+}
+
 #statusContainer li {
   width: 100vw;
   max-height: 25vh;
