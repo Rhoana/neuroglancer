@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 
-.help-button {
-  text-weight: bold;
+#help-button {
+  font-weight: bold;
 }
