@@ -16,6 +16,8 @@
 
 import debounce from 'lodash/debounce';
 import throttle from 'lodash/throttle';
+import {EditorState} from 'neuroglancer/editor/state';
+import {EditorLayer, toEditorLayer, isEditorLayer} from 'neuroglancer/editor/layer';
 import {RenderedPanel} from 'neuroglancer/display_context';
 import {SpatialPosition} from 'neuroglancer/navigation_state';
 import {RefCounted} from 'neuroglancer/util/disposable';
@@ -115,11 +117,15 @@ export class UserLayer extends RefCounted {
       if (!layer.ready) {
         continue;
       }
+      // Get selection from top render layer
       result = layer.getValueAt(position);
       if (result !== undefined) {
         break;
       }
     }
+    /*
+     * Map to Equivalent IDs if segmentation
+     */
     return this.transformPickedValue(result);
   }
 
@@ -279,6 +285,9 @@ export class LayerManager extends RefCounted {
     }
     let [oldLayer] = this.managedLayers.splice(oldIndex, 1);
     this.managedLayers.splice(newIndex, 0, oldLayer);
+    // Layer Manager handlers should:
+    //   Change selected values and layer panel
+    //   Update the visible layers
     this.layersChanged.dispatch();
   }
 
@@ -289,6 +298,17 @@ export class LayerManager extends RefCounted {
 
   getLayerByName(name: string) {
     return this.managedLayers.find(x => x.name === name);
+  }
+
+  get editorLayer(): EditorLayer | undefined {
+    // Get the top visible editor layer
+    let topLayers = [...this.managedLayers].reverse();
+    let topLayer = topLayers.find((layer) => {
+      return layer.visible && isEditorLayer(layer.layer);
+    });
+    // Double check that the layer is in fact an editor layer
+    let editorLayer = topLayer ? topLayer.layer : {};
+    return toEditorLayer(editorLayer);
   }
 
   /**
@@ -379,19 +399,33 @@ export class LayerManager extends RefCounted {
     };
   }
 
-  invokeAction(action: string) {
+  uniqueAction(action: string, userLayer?: UserLayer, editorState?: EditorState) {
+    if (!userLayer) {
+      return;
+    }
+    let editorLayer = toEditorLayer(userLayer);
+    // Invoke Editor Action on active editor layer
+    if (editorState && editorLayer && editorLayer == this.editorLayer) {
+      editorLayer.handleEditorAction(action, editorState);
+    }
+    else {
+      userLayer.handleAction(action);
+    }
+    // Unused: render layer handler always empty
+    for (let renderLayer of userLayer.renderLayers) {
+      if (!renderLayer.ready) {
+        continue;
+      }
+      renderLayer.handleAction(action);
+    }
+  }
+
+  invokeAction(action: string, editorState?: EditorState) {
     for (let managedLayer of this.managedLayers) {
       if (managedLayer.layer === null || !managedLayer.visible) {
         continue;
       }
-      let userLayer = managedLayer.layer;
-      userLayer.handleAction(action);
-      for (let renderLayer of userLayer.renderLayers) {
-        if (!renderLayer.ready) {
-          continue;
-        }
-        renderLayer.handleAction(action);
-      }
+      this.uniqueAction(action, managedLayer.layer, editorState);
     }
   }
 }
@@ -443,9 +477,18 @@ export class MouseSelectionState implements PickState {
   }
 
   setActive(value: boolean) {
+    /*
+     * Call all Mouse Movement handlers
+     * If active, activating, or deactivating
+     */
     this.stale = false;
     if (this.active !== value || value === true) {
       this.active = value;
+      /*
+       * Mouse movement handlers should:
+       *   Handle changed selections per layer
+       *   Trigger the edit action
+       */
       this.changed.dispatch();
     }
   }
@@ -476,6 +519,11 @@ export class LayerSelectedValues extends RefCounted {
   }
 
   handleChange() {
+    /*
+     * Selected Values handlers should:
+     *   store values for user layer from mouse position
+     *   set panel text from stored values for user layer
+     */
     this.needsUpdate = true;
     this.changed.dispatch();
   }
@@ -493,6 +541,7 @@ export class LayerSelectedValues extends RefCounted {
       for (let layer of this.layerManager.managedLayers) {
         let userLayer = layer.layer;
         if (layer.visible && userLayer) {
+          // Store seleceted value from mouse position in user layer
           values.set(userLayer, userLayer.getValueAt(position, mouseState));
         }
       }

@@ -18,7 +18,7 @@ import debounce from 'lodash/debounce';
 import {WatchableValue} from 'neuroglancer/trackable_value';
 import {RefCounted} from 'neuroglancer/util/disposable';
 import {urlSafeParse, urlSafeStringify, verifyObject} from 'neuroglancer/util/json';
-import {getCachedJson, Trackable} from 'neuroglancer/util/trackable';
+import {getCachedJson, Trackable, CompoundTrackable} from 'neuroglancer/util/trackable';
 
 /**
  * @file Implements a binding between a Trackable value and the URL hash state.
@@ -38,6 +38,7 @@ export class UrlHashBinding extends RefCounted {
    * Generation number of previous state set.
    */
   private prevStateGeneration: number|undefined;
+  private prevLayerGeneration: number|undefined;
 
   /**
    * Most recent error parsing URL hash.
@@ -52,22 +53,64 @@ export class UrlHashBinding extends RefCounted {
     this.registerDisposer(() => throttledSetUrlHash.cancel());
   }
 
+  /*
+   * Check if layer changed
+   */
+  checkLayerChange(): boolean {
+    // If root has children
+    if (!(this.root instanceof CompoundTrackable)) {
+      return false;
+    }
+    let layerState = this.root.children.get('layers');
+    if (layerState === undefined) {
+      return false;
+    }
+    // Check if layer change count has increased
+    let generation = layerState.changed.count;
+    if (generation === this.prevLayerGeneration) {
+      return false;
+    }
+    // No change for the first generation
+    if (this.prevLayerGeneration === undefined) {
+      this.prevLayerGeneration = generation; 
+      return false;
+    }
+    this.prevLayerGeneration = generation; 
+    return true;
+  }
+
+  /*
+   * Replaces current state, and may push state to history
+   */
+  updateHistory(stateString: string) {
+    let historyAction = history.replaceState.bind(history);
+    if (this.checkLayerChange()) {
+      // Push to history if layer changed
+      historyAction = history.pushState.bind(history); 
+    }
+    // Replace or push to history
+    if (stateString === '{}') {
+      historyAction(null, '', '#');
+    } else {
+      historyAction(null, '', '#!' + stateString);
+    }
+  }
+
   /**
    * Sets the URL hash to match the current state.
    */
   setUrlHash() {
     const cacheState = getCachedJson(this.root);
     const {generation} = cacheState;
+    // Check if any part of state has changed
     if (generation !== this.prevStateGeneration) {
       this.prevStateGeneration = cacheState.generation;
       let stateString = urlSafeStringify(cacheState.value);
+      // Check if state string has changed
       if (stateString !== this.prevStateString) {
         this.prevStateString = stateString;
-        if (stateString === '{}') {
-          history.replaceState(null, '', '#');
-        } else {
-          history.replaceState(null, '', '#!' + stateString);
-        }
+        // Update current or past history
+        this.updateHistory(stateString);
       }
     }
   }

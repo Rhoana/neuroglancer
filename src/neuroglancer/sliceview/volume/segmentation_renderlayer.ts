@@ -63,7 +63,7 @@ export class SegmentationRenderLayer extends RenderLayer {
 
   private equivalencesShaderManager = new HashMapShaderManager('equivalences');
   private equivalencesHashMap =
-      new EquivalencesHashMap(this.displayState.segmentEquivalences.disjointSets);
+      new EquivalencesHashMap(this.displayState.segmentEquivalences.allSets);
   private gpuEquivalencesHashTable = GPUHashTable.get(this.gl, this.equivalencesHashMap.hashMap);
   private hasEquivalences: boolean;
 
@@ -95,8 +95,12 @@ export class SegmentationRenderLayer extends RenderLayer {
   }
 
   getValueAt(position: vec3) {
+    /*
+     * Each resolution should be an alternative
+     */
     for (let alternatives of this.sources!) {
       for (let source of alternatives) {
+        // Return the original unedited value
         let result = source.getValueAt(position);
         if (result != null) {
           return result;

@@ -45,7 +45,7 @@ export function forEachVisibleSegment(
   let {visibleSegments, segmentEquivalences} = state;
   for (let rootObjectId of visibleSegments) {
     // TODO(jbms): Remove this check if logic is added to ensure that it always holds.
-    if (!segmentEquivalences.disjointSets.isMinElement(rootObjectId)) {
+    if (!segmentEquivalences.allSets.isMinElement(rootObjectId)) {
       continue;
     }
     for (let objectId of segmentEquivalences.setElements(rootObjectId)) {

@@ -16,6 +16,7 @@
 
 import {ChunkManager} from 'neuroglancer/chunk_manager/frontend';
 import {DisplayContext} from 'neuroglancer/display_context';
+import {EditorState} from 'neuroglancer/editor/state';
 import {LayerManager, MouseSelectionState} from 'neuroglancer/layer';
 import * as L from 'neuroglancer/layout';
 import {NavigationState, OrientationState, Pose} from 'neuroglancer/navigation_state';
@@ -42,6 +43,7 @@ export class InputEventBindings {
 
 export interface ViewerUIState extends SliceViewViewerState, VisibilityPrioritySpecification {
   display: DisplayContext;
+  editorState: EditorState;
   mouseState: MouseSelectionState;
   perspectiveNavigationState: NavigationState;
   showPerspectiveSliceViews: TrackableBoolean;
@@ -83,6 +85,7 @@ export function getCommonViewerState(viewer: ViewerUIState) {
     layerManager: viewer.layerManager,
     showAxisLines: viewer.showAxisLines,
     visibility: viewer.visibility,
+    editorState: viewer.editorState,
   };
 }
 

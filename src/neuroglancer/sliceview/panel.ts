@@ -46,6 +46,7 @@ void emit(vec4 color, vec4 pickId) {
 `);
 }
 
+// UNUSED: Given only to an unused render context
 function sliceViewPanelEmitPickID(builder: ShaderBuilder) {
   builder.addFragmentCode(`
 void emit(vec4 color, vec4 pickId) {
@@ -142,16 +143,29 @@ export class SliceViewPanel extends RenderedDataPanel {
 
     this.registerDisposer(sliceView);
     this.registerDisposer(sliceView.visibility.add(this.visibility));
-    this.registerDisposer(sliceView.viewChanged.add(() => {
+
+    /*
+     * If this panel visible, handler should:
+     *   Schedule redraws for panels in context
+     */
+    let redrawAllPanels = () => {
       if (this.visible) {
         context.scheduleRedraw();
       }
-    }));
-    this.registerDisposer(viewer.showAxisLines.changed.add(() => {
+    }
+    this.registerDisposer(sliceView.viewChanged.add(redrawAllPanels));
+    // UNUSED
+    // this.registerDisposer(viewer.editorState.editor.changed.add(redrawAllPanels));
+    /*
+     * If this panel visible, handler should:
+     *   Schedule redraws for this panel
+     */
+    let redrawPanel = () => {
       if (this.visible) {
         this.scheduleRedraw();
       }
-    }));
+    }
+    this.registerDisposer(viewer.showAxisLines.changed.add(redrawPanel));
 
     {
       let scaleBar = this.scaleBarWidget.element;
@@ -162,6 +176,9 @@ export class SliceViewPanel extends RenderedDataPanel {
   }
 
   draw() {
+    /*
+     * Called on update of display context
+     */
     let {sliceView} = this;
     if (!sliceView.hasValidViewport) {
       return;
@@ -172,25 +189,32 @@ export class SliceViewPanel extends RenderedDataPanel {
     let {gl} = this;
 
     let {width, height, dataToDevice} = sliceView;
+    /*
+     * Begin drawing to the framebuffer
+     */
     this.offscreenFramebuffer.bind(width, height);
     gl.disable(gl.SCISSOR_TEST);
     this.gl.clearColor(0.0, 0.0, 0.0, 0.0);
     gl.clear(gl.COLOR_BUFFER_BIT);
 
-    // Draw axes lines.
-    // FIXME: avoid use of temporary matrix
-    let mat = mat4.create();
-
+    /*
+     * Draw everything to the framebuffer
+     */
     this.sliceViewRenderHelper.draw(
         sliceView.offscreenFramebuffer.colorBuffers[0].texture, identityMat4, this.colorFactor,
         this.backgroundColor, 0, 0, 1, 1);
 
+    // All visible Slice Panel layers in the Viewer's layers
+    // UNUSED: getVisibleLayers returns Empty Array
     let visibleLayers = this.visibleLayerTracker.getVisibleLayers();
+
     let {pickIDs} = this;
     pickIDs.clear();
     this.offscreenFramebuffer.bindSingle(OffscreenTextures.COLOR);
+
+    // UNUSED: no side effects, never passed to renderLayer
     let renderContext: SliceViewPanelRenderContext = {
-      dataToDevice: sliceView.dataToDevice,
+      dataToDevice: dataToDevice,
       pickIDs: pickIDs,
       emitter: sliceViewPanelEmitColor,
       emitColor: true,
@@ -213,33 +237,14 @@ export class SliceViewPanel extends RenderedDataPanel {
       renderLayer.draw(renderContext);
     }
 
+    // Draw the Axis lines if needed
     if (this.viewer.showAxisLines.value) {
-      // Construct matrix that maps [-1, +1] x/y range to the full viewport data
-      // coordinates.
-      mat4.copy(mat, dataToDevice);
-      for (let i = 0; i < 3; ++i) {
-        mat[12 + i] = 0;
-      }
-
-      for (let i = 0; i < 4; ++i) {
-        mat[2 + 4 * i] = 0;
-      }
-
-
-      let axisLength = Math.min(width, height) / 4 * 1.5;
-      let pixelSize = sliceView.pixelSize;
-      for (let i = 0; i < 12; ++i) {
-        // pixelSize is nm / pixel
-        //
-        mat[i] *= axisLength * pixelSize;
-      }
-      this.offscreenFramebuffer.bindSingle(OffscreenTextures.COLOR);
-      this.axesLineHelper.draw(mat);
+      this.drawAxisLines(sliceView);
     }
 
     this.offscreenFramebuffer.unbind();
 
-    // Draw the texture over the whole viewport.
+    // Copy framebuffer to screen
     this.setGLViewport();
     this.offscreenCopyHelper.draw(
         this.offscreenFramebuffer.colorBuffers[OffscreenTextures.COLOR].texture);
@@ -252,6 +257,37 @@ export class SliceViewPanel extends RenderedDataPanel {
       dimensions.nanometersPerPixel = sliceView.pixelSize;
       scaleBarWidget.update();
     }
+  }
+
+  protected drawAxisLines(sliceView : SliceView) {
+
+    let {width, height, dataToDevice} = sliceView;
+    // Draw axes lines.
+    // FIXME: avoid use of temporary matrix
+    let mat = mat4.create();
+
+    // Construct matrix that maps [-1, +1] x/y range to the full viewport data
+    // coordinates.
+    mat4.copy(mat, dataToDevice);
+    for (let i = 0; i < 3; ++i) {
+      mat[12 + i] = 0;
+    }
+
+    for (let i = 0; i < 4; ++i) {
+      mat[2 + 4 * i] = 0;
+    }
+
+
+    let axisLength = Math.min(width, height) / 4 * 1.5;
+    let pixelSize = sliceView.pixelSize;
+    for (let i = 0; i < 12; ++i) {
+      // pixelSize is nm / pixel
+      //
+      mat[i] *= axisLength * pixelSize;
+    }
+    this.offscreenFramebuffer.bindSingle(OffscreenTextures.COLOR);
+    this.axesLineHelper.draw(mat);
+
   }
 
   onResize() {
@@ -276,6 +312,12 @@ export class SliceViewPanel extends RenderedDataPanel {
     vec3.transformMat4(out, out, sliceView.viewportToData);
 
     let glWindowY = height - y;
+
+    // Call the edit action on the active editor Layer
+    let {layerManager, editorState} = this.viewer;
+    layerManager.uniqueAction('edit', layerManager.editorLayer, editorState);
+
+    // UNUSED: readPixelAsUint32 returns 0
     this.pickIDs.setMouseState(
         mouseState,
         offscreenFramebuffer.readPixelAsUint32(OffscreenTextures.PICK, glWindowX, glWindowY));

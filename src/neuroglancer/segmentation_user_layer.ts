@@ -18,10 +18,13 @@ import {CoordinateTransform} from 'neuroglancer/coordinate_transform';
 import {getMeshSource, getSkeletonSource} from 'neuroglancer/datasource/factory';
 import {UserLayer, UserLayerDropdown} from 'neuroglancer/layer';
 import {LayerListSpecification, registerLayerType, registerVolumeLayerType} from 'neuroglancer/layer_specification';
-import {getVolumeWithStatusMessage} from 'neuroglancer/layer_specification';
+import {getVolumeWithStatusMessage, sendSocketWithStatus, showEditStatus} from 'neuroglancer/layer_specification';
 import {MeshSource} from 'neuroglancer/mesh/frontend';
 import {MeshLayer} from 'neuroglancer/mesh/frontend';
 import {Overlay} from 'neuroglancer/overlay';
+import {EditorLayer} from 'neuroglancer/editor/layer';
+import {EDITORS, EditorState} from 'neuroglancer/editor/state';
+import {EditorSource, toEditorSource} from 'neuroglancer/editor/source';
 import {SegmentColorHash} from 'neuroglancer/segment_color';
 import {SegmentationDisplayState3D, SegmentSelectionState, Uint64MapEntry} from 'neuroglancer/segmentation_display_state/frontend';
 import {SharedDisjointUint64Sets} from 'neuroglancer/shared_disjoint_sets';
@@ -41,6 +44,7 @@ import {Uint64EntryWidget} from 'neuroglancer/widget/uint64_entry_widget';
 import {SharedWatchableValue} from 'neuroglancer/shared_watchable_value';
 import {Bounds} from 'neuroglancer/segmentation_display_state/base';
 import {vec3} from 'neuroglancer/util/geom';
+import {EditorSocket} from 'dojo_websocket';
 
 require('neuroglancer/noselect.css');
 require('./segmentation_user_layer.css');
@@ -51,7 +55,7 @@ const OBJECT_ALPHA_JSON_KEY = 'objectAlpha';
 const HIDE_SEGMENT_ZERO_JSON_KEY = 'hideSegmentZero';
 
 
-export class SegmentationUserLayer extends UserLayer {
+export class SegmentationUserLayer extends UserLayer implements EditorLayer {
   displayState: SliceViewSegmentationDisplayState&SegmentationDisplayState3D&
       SkeletonLayerDisplayState = {
         segmentColorHash: SegmentColorHash.getDefault(),
@@ -69,6 +73,8 @@ export class SegmentationUserLayer extends UserLayer {
         shaderError: makeWatchableShaderError(),
       };
   volumePath: string|undefined;
+  editorSocket: EditorSocket = new EditorSocket(this);
+  editorSource: EditorSource = toEditorSource();
 
   /**
    * If meshPath is undefined, a default mesh source provided by the volume may be used.  If
@@ -115,10 +121,15 @@ export class SegmentationUserLayer extends UserLayer {
     let volumePath = this.volumePath = verifyOptionalString(x['source']);
     let meshPath = this.meshPath = x['mesh'] === null ? null : verifyOptionalString(x['mesh']);
     let skeletonsPath = this.skeletonsPath = verifyOptionalString(x['skeletons']);
+
     if (volumePath !== undefined) {
-      getVolumeWithStatusMessage(manager.chunkManager, volumePath, {
+      /*
+       * Get the info for segmentation volume
+       */
+      let infoPromise = getVolumeWithStatusMessage(manager.chunkManager, volumePath, {
         volumeType: VolumeType.SEGMENTATION
-      }).then(volume => {
+      });
+      infoPromise.then(volume => {
         if (!this.wasDisposed) {
           this.addRenderLayer(new SegmentationRenderLayer(volume, this.displayState));
           if (meshPath === undefined) {
@@ -128,8 +139,19 @@ export class SegmentationUserLayer extends UserLayer {
             }
           }
         }
+        // Set editor source from the volume
+        this.editorSource = toEditorSource(volume);
+        /*
+        * Try to make the websocket connection
+         */
+        new Promise((resolve, reject) => {
+          this.editorSocket.open(resolve, reject);
+        });
       });
     }
+    /*
+     * Set up a websocket Connection for segmentation layer
+     */
 
     if (meshPath != null) {
       getMeshSource(manager.chunkManager, meshPath).then(meshSource => {
@@ -214,6 +236,9 @@ export class SegmentationUserLayer extends UserLayer {
   }
 
   transformPickedValue(value: any) {
+    /*
+     * Map to Equivalent IDs
+     */
     if (value == null) {
       return value;
     }
@@ -235,6 +260,95 @@ export class SegmentationUserLayer extends UserLayer {
     return new SegmentationDropdown(element, this);
   }
 
+  mergeOne(setId: Uint64, newId: Uint64) {
+    let {segmentEquivalences} = this.displayState;
+    segmentEquivalences.link(setId, newId);
+  }
+
+  currentMerges(): Array<Array<string>> {
+    let {segmentEquivalences} = this.displayState;
+    return segmentEquivalences.toJSON();
+  }
+
+  restoreSaved(merges: Array<Array<string>>|undefined) {
+    if (merges !== undefined) {
+      let {segmentEquivalences} = this.displayState;
+      segmentEquivalences.restoreSaved(merges);
+    }
+  }
+
+  handleMessage(msg: string) {
+    // Parse JSON message
+    let message = JSON.parse(msg);
+    // Handle any action
+    switch (message.action) {
+      case 'restore': {
+        // Restore all saved merges
+        let merge = message.merge;
+        this.restoreSaved(merge);
+        break;
+      }
+      case 'save': {
+        showEditStatus(this, 'Successfully saved');
+        // TODO: Remove the saved merges from current merges
+        // TODO: segmentEquivalences.clearCurrent(merges);
+        // TEMP: Remove all current and saved merges
+        let {segmentEquivalences} = this.displayState;
+        segmentEquivalences.clearAll();
+        // Restore all saved merges
+        let merge = message.merge;
+        this.restoreSaved(merge);
+        break;
+      }
+    }
+  }
+
+  handleMergeAction(action: string, editorState: EditorState) {
+    let {segmentSelectionState} = this.displayState;
+    let haveSegment = segmentSelectionState.hasSelectedSegment;
+    // Allow merges
+    switch (action) {
+      case 'select': {
+        if (haveSegment) {
+          let segment = segmentSelectionState.selectedSegment;
+          // Begin merge of selected
+          if (editorState.segment === undefined) {
+            editorState.segment = segment.clone();
+            break;
+          }
+          // End merge of segment
+          editorState.segment = undefined;
+          break;
+        }
+      }
+      case 'edit': {
+        if (haveSegment && editorState.segment) {
+          let segment = segmentSelectionState.selectedSegment;
+          this.mergeOne(editorState.segment, segment);
+        }
+        break;
+      }
+      default: {
+        this.handleAction(action);
+        break;
+      }
+    }
+  }
+
+  handleEditorAction(action: string, editorState: EditorState) {
+    // Handle action based on editor
+    switch (editorState.editor.value) {
+      case EDITORS.MERGE: {
+        this.handleMergeAction(action, editorState);
+        break;
+      }
+      default: {
+        this.handleAction(action);
+        break;
+      }
+    }
+  }
+
   handleAction(action: string) {
     switch (action) {
       case 'recolor': {
@@ -244,6 +358,16 @@ export class SegmentationUserLayer extends UserLayer {
       case 'clear-segments': {
         this.displayState.visibleSegments.clear();
         break;
+      }
+      case 'save': {
+        // Get current merges
+        let merge = this.currentMerges();
+        let msg = JSON.stringify({
+          action: 'save',
+          merge: merge,
+        });
+        // Send current merges via websocket
+        sendSocketWithStatus(this, msg);
       }
       case 'select': {
         let {segmentSelectionState} = this.displayState;

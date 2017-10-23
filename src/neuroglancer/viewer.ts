@@ -38,6 +38,7 @@ import {EventActionMap, KeyboardEventBinder} from 'neuroglancer/util/keyboard_bi
 import {NullarySignal} from 'neuroglancer/util/signal';
 import {CompoundTrackable} from 'neuroglancer/util/trackable';
 import {DataDisplayLayout, InputEventBindings as DataPanelInputEventBindings, LAYOUTS} from 'neuroglancer/viewer_layouts';
+import {EditorState, trackableEditor, editorUI} from 'neuroglancer/editor/state';
 import {ViewerState, VisibilityPrioritySpecification} from 'neuroglancer/viewer_state';
 import {WatchableVisibilityPriority} from 'neuroglancer/visibility_priority/frontend';
 import {GL} from 'neuroglancer/webgl/context';
@@ -84,6 +85,8 @@ export class InputEventBindings extends DataPanelInputEventBindings {
 }
 
 export interface UIOptions {
+  showEditOption: boolean;
+  showSaveButton: boolean;
   showHelpButton: boolean;
   showLayerDialog: boolean;
   showLayerPanel: boolean;
@@ -97,6 +100,8 @@ export interface ViewerOptions extends UIOptions, VisibilityPrioritySpecificatio
 }
 
 const defaultViewerOptions = {
+  showEditOption: true,
+  showSaveButton: true,
   showHelpButton: true,
   showLayerDialog: true,
   showLayerPanel: true,
@@ -127,6 +132,11 @@ export class Viewer extends RefCounted implements ViewerState {
 
   layerSpecification: LayerListSpecification;
   layoutName = new TrackableValue<string>(LAYOUTS[0][0], validateLayoutName);
+  // First editor is first UI option
+  editorState = <EditorState> {
+    editor: trackableEditor(editorUI.keys().next().value),
+    segment: undefined,
+  }
 
   state = new CompoundTrackable();
 
@@ -251,15 +261,51 @@ export class Viewer extends RefCounted implements ViewerState {
     gridContainer.classList.add('neuroglancer-noselect');
     let uiElements: L.Handler[] = [];
 
-    if (options.showHelpButton || options.showLocation) {
+    let {showHelpButton, showLocation} = options;
+    let {showEditOption, showSaveButton} = options;
+    let showEditTools = showEditOption || showSaveButton;
+    // All these options require the nav bar
+    if (showEditTools || showHelpButton || showLocation) {
       let rowElements: L.Handler[] = [];
       if (options.showLocation) {
         rowElements.push(L.withFlex(1, element => new PositionStatusPanel(element, this)));
       }
+      if (options.showEditOption) {
+        rowElements.push(element => {
+          let select = document.createElement('select');
+          select.id = 'edit-option';
+          // Add option for each editor
+          editorUI.forEach((name, v) => {
+            let opt = document.createElement('option');
+            opt.textContent = name;
+            opt.value = v.toString();
+            select.appendChild(opt);
+          });
+          element.appendChild(select);
+          // Set editor state when user selects option
+          this.registerEventListener(select, 'change', () => {
+            let value = parseInt(select.value, 10);
+            let {editor} = this.editorState;
+            editor.restoreState(value);
+          });
+        });
+      }
+      if (options.showSaveButton) {
+        rowElements.push(element => {
+          let button = document.createElement('button');
+          button.id = 'save-button';
+          button.textContent = 'save';
+          button.title = 'Save';
+          element.appendChild(button);
+          this.registerEventListener(button, 'click', () => {
+            this.saveAllEdits();
+          });
+        });
+      }
       if (options.showHelpButton) {
         rowElements.push(element => {
           let button = document.createElement('button');
-          button.className = 'help-button';
+          button.id = 'help-button';
           button.textContent = '?';
           button.title = 'Help';
           element.appendChild(button);
@@ -328,7 +374,7 @@ export class Viewer extends RefCounted implements ViewerState {
     for (const action of ['select', 'annotate', ]) {
       this.bindAction(action, () => {
         this.mouseState.updateUnconditionally();
-        this.layerManager.invokeAction(action);
+        this.layerManager.invokeAction(action, this.editorState);
       });
     }
 
@@ -350,11 +396,26 @@ export class Viewer extends RefCounted implements ViewerState {
     this.bindAction('toggle-axis-lines', () => this.showAxisLines.toggle());
     this.bindAction('toggle-scale-bar', () => this.showScaleBar.toggle());
     this.bindAction('toggle-show-slices', () => this.showPerspectiveSliceViews.toggle());
+    this.bindAction('toggle-edit-mode', () => this.toggleEditor());
   }
 
   createDataDisplayLayout(element: HTMLElement) {
     let layoutCreator = getLayoutByName(this.layoutName.value)[1];
     this.dataDisplayLayout = layoutCreator(element, this);
+  }
+
+  toggleEditor() {
+    let {editor} = this.editorState;
+    editor.restoreState(editor.value + 1);
+    // Set the selector if possible
+    let elem = document.getElementById('edit-option');
+    if (elem) {
+      let select = elem as HTMLInputElement;
+      // Show editor state if in dropdown
+      if (editorUI.has(editor.value)) {
+        select.value = editor.value.toString();
+      }
+    }
   }
 
   toggleLayout() {
@@ -371,6 +432,10 @@ export class Viewer extends RefCounted implements ViewerState {
       ['Slice View', inputEventBindings.sliceView],
       ['Perspective View', inputEventBindings.perspectiveView],
     ]);
+  }
+
+  saveAllEdits() {
+    this.layerManager.invokeAction('save');
   }
 
   get gl() {

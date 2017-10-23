@@ -14,22 +14,28 @@
  * limitations under the License.
  */
 
-#statusContainer {
-  position: fixed;
-  bottom: 0px;
-  z-index: 100;
-  background-color: grey;
-  color: white;
-  margin: 0px;
-  padding: 0px;
-}
+/**
+ * Basic typings for dojo package.
+ */
 
-#statusContainer > button:only-child {
-  display: none;
-}
+declare module 'dojo_websocket' {
 
-#statusContainer div {
-  width: 100vw;
-  max-height: 25vh;
-  overflow-y: auto;
+  import {EditorLayer} from 'neuroglancer/editor/layer';
+
+  // Fulfills a promise for a websocket
+  type fn = (msg: string) => void;
+
+  // Wrapper for dojo websocket
+  interface EditorSocket {
+    // returns link state
+    open: (resolve: fn, reject: fn) => void,
+    // Takes an object to jsonify
+    send: (resolve: fn, reject: fn, m: string) => void,
+  }
+
+  interface EditorSocketConstructor {
+    new(editorLayer: EditorLayer): EditorSocket;
+  }
+
+  const EditorSocket: EditorSocketConstructor;
 }
