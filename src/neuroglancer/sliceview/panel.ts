@@ -185,7 +185,7 @@ export class SliceViewPanel extends RenderedDataPanel {
 
     // UNUSED: no side effects, never passed to renderLayer
     let renderContext: SliceViewPanelRenderContext = {
-      dataToDevice: sliceView.dataToDevice,
+      dataToDevice: dataToDevice,
       pickIDs: pickIDs,
       emitter: sliceViewPanelEmitColor,
       emitColor: true,

@@ -23,7 +23,6 @@ import {NavigationState, OrientationState, Pose} from 'neuroglancer/navigation_s
 import {PerspectivePanel} from 'neuroglancer/perspective_view/panel';
 import {SliceView} from 'neuroglancer/sliceview/frontend';
 import {SliceViewPanel} from 'neuroglancer/sliceview/panel';
-import {TrackableValue} from 'neuroglancer/trackable_value';
 import {TrackableBoolean} from 'neuroglancer/trackable_boolean';
 import {RefCounted} from 'neuroglancer/util/disposable';
 import {removeChildren} from 'neuroglancer/util/dom';

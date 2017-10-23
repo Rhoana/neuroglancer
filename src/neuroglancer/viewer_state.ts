@@ -16,7 +16,6 @@
 
 import {LayerManager, MouseSelectionState} from 'neuroglancer/layer';
 import {EditorState} from 'neuroglancer/editor/state';
-import {TrackableValue} from 'neuroglancer/trackable_value';
 import {NavigationState} from 'neuroglancer/navigation_state';
 import {TrackableBoolean} from 'neuroglancer/trackable_boolean';
 import {VisibilityPrioritySpecification} from 'neuroglancer/visibility_priority/frontend';

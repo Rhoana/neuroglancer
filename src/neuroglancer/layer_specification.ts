@@ -27,7 +27,6 @@ import {verifyObject, verifyObjectProperty, verifyOptionalString} from 'neurogla
 import {NullarySignal, Signal} from 'neuroglancer/util/signal';
 import {Trackable} from 'neuroglancer/util/trackable';
 import {EditorLayer} from 'neuroglancer/editor/layer';
-import {EditorSocket} from 'dojo_websocket';
 
 /*
  * Show status message for websocket connection

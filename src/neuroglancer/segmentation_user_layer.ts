@@ -144,7 +144,7 @@ export class SegmentationUserLayer extends UserLayer implements EditorLayer {
         /*
         * Try to make the websocket connection
          */
-        let openPromise = new Promise((resolve, reject) => {
+        new Promise((resolve, reject) => {
           this.editorSocket.open(resolve, reject);
         });
       });
@@ -367,7 +367,7 @@ export class SegmentationUserLayer extends UserLayer implements EditorLayer {
           merge: merge,
         });
         // Send current merges via websocket
-        let sendPromise = sendSocketWithStatus(this, msg);
+        sendSocketWithStatus(this, msg);
       }
       case 'select': {
         let {segmentSelectionState} = this.displayState;
