@@ -25,25 +25,13 @@ const fs = require('fs');
 const AliasPlugin = require('./webpack_alias_plugin');
 const resolveReal = require('./resolve_real');
 
-// Monkey patch ts-loader.
-require('./ts_loader_patch');
-
 // Note: We use require.resolve below to ensure the plugins are resolved
 // relative to this configuration file, rather than relative to the source
 // files, in case this configuration is being used from a dependent project that
 // doesn't have all of these plugins as direct dependencies.
 //
 // require.resolve resolves all symlinks.
-const DEFAULT_BABEL_PLUGINS = exports.DEFAULT_BABEL_PLUGINS = [
-  // Needed until Firefox implements proper handling of default values in
-  // destructuring expressions.
-  require.resolve('babel-plugin-transform-es2015-destructuring'),
-  require.resolve('babel-plugin-transform-es2015-parameters'),
-
-  // Needed until Firefox implements proper for loop scoping of let, which is
-  // not fixed as of Firefox 50.
-  require.resolve('babel-plugin-transform-es2015-block-scoping'),
-];
+const DEFAULT_BABEL_PLUGINS = exports.DEFAULT_BABEL_PLUGINS = [];
 
 const minifyBabelPlugins = exports.minifyBabelPlugins = [
   // Google Closure Compiler doesn't accept the:
@@ -124,7 +112,7 @@ function getTypescriptLoaderEntry(options) {
   }
   let tsOptions = {
     compiler: resolveReal(__dirname, 'typescript_compiler_shim.js'),
-    configFileName: tsconfigPath,
+    configFile: tsconfigPath,
     compilerOptions: {paths: newCompilerPaths},
     instance: 'main',
   };

@@ -92,6 +92,7 @@ export interface UIOptions {
   showLayerPanel: boolean;
   showLocation: boolean;
   inputEventBindings: InputEventBindings;
+  resetStateWhenEmpty: boolean;
 }
 
 export interface ViewerOptions extends UIOptions, VisibilityPrioritySpecification {
@@ -106,6 +107,7 @@ const defaultViewerOptions = {
   showLayerDialog: true,
   showLayerPanel: true,
   showLocation: true,
+  resetStateWhenEmpty: true,
 };
 
 export class Viewer extends RefCounted implements ViewerState {
@@ -226,7 +228,8 @@ export class Viewer extends RefCounted implements ViewerState {
     // Debounce this call to ensure that a transient state does not result in the layer dialog being
     // shown.
     const maybeResetState = this.registerCancellable(debounce(() => {
-      if (!this.wasDisposed && this.layerManager.managedLayers.length === 0) {
+      if (!this.wasDisposed && this.layerManager.managedLayers.length === 0 &&
+          this.options.resetStateWhenEmpty) {
         // No layers, reset state.
         this.navigationState.reset();
         this.perspectiveNavigationState.pose.orientation.reset();
