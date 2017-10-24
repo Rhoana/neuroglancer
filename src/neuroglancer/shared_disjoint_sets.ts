@@ -22,6 +22,8 @@ import {registerRPC, registerSharedObject, RPC, SharedObjectCounterpart} from 'n
 
 const RPC_TYPE_ID = 'DisjointUint64Sets';
 const ADD_METHOD_ID = 'DisjointUint64Sets.add';
+const REMOVE_METHOD_ID = 'DisjointUint64Sets.remove';
+const SPLIT_METHOD_ID = 'DisjointUint64Sets.split';
 const CLEAR_METHOD_ID = 'DisjointUint64Sets.clear';
 
 @registerSharedObject(RPC_TYPE_ID)
@@ -81,10 +83,43 @@ export class SharedDisjointUint64Sets extends SharedObjectCounterpart {
     }
   }
 
+  unlink (a: Uint64) {
+    if (this.disjointSets.unlink(a)) {
+      let {rpc} = this;
+      if (rpc) {
+        rpc.invoke(
+            REMOVE_METHOD_ID,
+            {'id': this.rpcId, 'al': a.low, 'ah': a.high});
+      }
+      this.changed.dispatch();
+    }
+  }
+
+  split(a: Uint64[], b: Uint64[]) {
+    if (this.disjointSets.split(a, b)) {
+      let {rpc} = this;
+      if (rpc) {
+        const xfer_a = Uint64.encodeUint32Array(a);
+        const xfer_b = Uint64.encodeUint32Array(b);
+
+        rpc.invoke(
+            SPLIT_METHOD_ID,
+            { 
+              id: this.rpcId, 
+              a: xfer_a,
+              b: xfer_b,
+            }, 
+            [xfer_a.buffer, xfer_b.buffer]
+        );
+      }
+      this.changed.dispatch();
+    }
+  }
+
   clearSaved() {
     // Only current sets
     this.allSets.clear();
-    this.restoreSets(this.linkSaved, this.toJSON());
+    this.addSets(this.linkSaved, this.toJSON());
   }
 
   setElements(a: Uint64) {
@@ -99,7 +134,7 @@ export class SharedDisjointUint64Sets extends SharedObjectCounterpart {
     return this.currentSets.toJSON();
   }
 
-  restoreSets(linker: (a: Uint64, b: Uint64) => void, obj: any) {
+  addSets(linker: (a: Uint64, b: Uint64) => void, obj: any) {
     if (obj !== undefined) {
       let ids = [new Uint64(), new Uint64()];
       parseArray(obj, z => {
@@ -117,12 +152,12 @@ export class SharedDisjointUint64Sets extends SharedObjectCounterpart {
   // Restores current sets
   restoreState(obj: any) {
     this.clearAll();
-    this.restoreSets(this.link, obj);
+    this.addSets(this.link, obj);
   }
   // Restores saved sets
   restoreSaved(obj: any) {
     this.clearSaved();
-    this.restoreSets(this.linkSaved, obj);
+    this.addSets(this.linkSaved, obj);
   }
 }
 
@@ -140,9 +175,41 @@ registerRPC(ADD_METHOD_ID, function(x) {
   }
 });
 
+registerRPC(REMOVE_METHOD_ID, function(x) {
+  let obj = <SharedDisjointUint64Sets>this.get(x['id']);
+  tempA.low = x['al'];
+  tempA.high = x['ah'];
+
+  if (obj.disjointSets.unlink(tempA)) {
+    obj.changed.dispatch();
+  }
+});
+
 registerRPC(CLEAR_METHOD_ID, function(x) {
   let obj = <SharedDisjointUint64Sets>this.get(x['id']);
   if (obj.currentSets.clear()) {
     obj.changed.dispatch();
   }
 });
+
+registerRPC(SPLIT_METHOD_ID, function (x) {
+  const obj = <SharedDisjointUint64Sets>this.get(x['id']);
+  
+  const split_group_a = Uint64.decodeUint32Array(x.a);
+  const split_group_b = Uint64.decodeUint32Array(x.b);
+
+  if (obj.disjointSets.split(split_group_a, split_group_b)) {
+    obj.changed.dispatch();
+  }
+});
+
+
+
+
+
+
+
+
+
+
+
