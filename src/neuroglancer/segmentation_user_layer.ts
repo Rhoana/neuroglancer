@@ -15,7 +15,6 @@
  */
 
 import {CoordinateTransform} from 'neuroglancer/coordinate_transform';
-import {getMeshSource, getSkeletonSource} from 'neuroglancer/datasource/factory';
 import {UserLayer, UserLayerDropdown} from 'neuroglancer/layer';
 import {LayerListSpecification, registerLayerType, registerVolumeLayerType} from 'neuroglancer/layer_specification';
 import {getVolumeWithStatusMessage, sendSocketWithStatus, showEditStatus} from 'neuroglancer/layer_specification';
@@ -126,7 +125,7 @@ export class SegmentationUserLayer extends UserLayer implements EditorLayer {
       /*
        * Get the info for segmentation volume
        */
-      let infoPromise = getVolumeWithStatusMessage(manager.chunkManager, volumePath, {
+      let infoPromise = getVolumeWithStatusMessage(manager.dataSourceProvider, manager.chunkManager, volumePath, {
         volumeType: VolumeType.SEGMENTATION
       });
       infoPromise.then(volume => {
@@ -154,22 +153,24 @@ export class SegmentationUserLayer extends UserLayer implements EditorLayer {
      */
 
     if (meshPath != null) {
-      getMeshSource(manager.chunkManager, meshPath).then(meshSource => {
-        if (!this.wasDisposed) {
-          this.addMesh(meshSource);
-        }
-      });
+      this.manager.dataSourceProvider.getMeshSource(manager.chunkManager, meshPath)
+          .then(meshSource => {
+            if (!this.wasDisposed) {
+              this.addMesh(meshSource);
+            }
+          });
     }
 
     if (skeletonsPath !== undefined) {
-      getSkeletonSource(manager.chunkManager, skeletonsPath).then(skeletonSource => {
-        if (!this.wasDisposed) {
-          let base = new SkeletonLayer(
-              manager.chunkManager, skeletonSource, manager.voxelSize, this.displayState);
-          this.addRenderLayer(new PerspectiveViewSkeletonLayer(base.addRef()));
-          this.addRenderLayer(new SliceViewPanelSkeletonLayer(/* transfer ownership */ base));
-        }
-      });
+      this.manager.dataSourceProvider.getSkeletonSource(manager.chunkManager, skeletonsPath)
+          .then(skeletonSource => {
+            if (!this.wasDisposed) {
+              let base = new SkeletonLayer(
+                  manager.chunkManager, skeletonSource, manager.voxelSize, this.displayState);
+              this.addRenderLayer(new PerspectiveViewSkeletonLayer(base.addRef()));
+              this.addRenderLayer(new SliceViewPanelSkeletonLayer(/* transfer ownership */ base));
+            }
+          });
     }
 
     verifyObjectProperty(x, 'equivalences', y => {
