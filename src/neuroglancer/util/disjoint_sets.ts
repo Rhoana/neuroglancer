@@ -116,9 +116,17 @@ export class DisjointUint64Sets {
     return findRepresentative(element)[minSymbol];
   }
 
+  private equal(a: Uint64, b: Uint64) {
+    return (b === a || Uint64.equal(b, a));
+  }
+
+  equalSet(a: Uint64, b: Uint64) {
+    return this.equal(this.get(a), this.get(b));
+  }
+
   isMinElement(x: Uint64) {
     let y = this.get(x);
-    return (y === x || Uint64.equal(y, x));
+    return this.equal(x, y);
   }
 
   private makeSet(x: Uint64): Uint64 {
@@ -216,7 +224,7 @@ export class DisjointUint64Sets {
     consistencyfn(a);
     consistencyfn(b);
 
-    if (this.get(a[0]) !== this.get(b[0])) {
+    if (!this.equalSet(a[0], b[0])) {
       throw new Error(`${a} and ${b} are not in the same set.`);
     }
 
@@ -279,8 +287,10 @@ export class DisjointUint64Sets {
         for (let member of setElementIterator(element)) {
           members.push(member);
         }
-        members.sort(Uint64.compare);
-        sets.push(members);
+        if (members.length > 1) {
+          members.sort(Uint64.compare);
+          sets.push(members);
+        }
       }
     }
     sets.sort((a, b) => Uint64.compare(a[0], b[0]));

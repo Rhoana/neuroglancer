@@ -148,9 +148,6 @@ export class SegmentationUserLayer extends UserLayer implements EditorLayer {
         });
       });
     }
-    /*
-     * Set up a websocket Connection for segmentation layer
-     */
 
     if (meshPath != null) {
       this.manager.dataSourceProvider.getMeshSource(manager.chunkManager, meshPath)
@@ -291,11 +288,6 @@ export class SegmentationUserLayer extends UserLayer implements EditorLayer {
       }
       case 'save': {
         showEditStatus(this, 'Successfully saved');
-        // TODO: Remove the saved merges from current merges
-        // TODO: segmentEquivalences.clearCurrent(merges);
-        // TEMP: Remove all current and saved merges
-        let {segmentEquivalences} = this.displayState;
-        segmentEquivalences.clearAll();
         // Restore all saved merges
         let merge = message.merge;
         this.restoreSaved(merge);

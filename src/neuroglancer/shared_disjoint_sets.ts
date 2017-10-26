@@ -47,81 +47,96 @@ export class SharedDisjointUint64Sets extends SharedObjectCounterpart {
     super.disposed();
   }
 
-  linkSaved(a: Uint64, b: Uint64) {
-    // Saved links go to full group
-    this.allSets.link(a,b);
-    this.changed.dispatch();
-  }
-
-  link(a: Uint64, b: Uint64) {
-    // New links go to both groups
-    this.allSets.link(a,b);
-    if (this.currentSets.link(a, b)) {
-      let {rpc} = this;
-      if (rpc) {
-        rpc.invoke(
-            ADD_METHOD_ID,
-            {'id': this.rpcId, 'al': a.low, 'ah': a.high, 'bl': b.low, 'bh': b.high});
-      }
-      this.changed.dispatch();
-    }
-  }
-
   get(x: Uint64): Uint64 {
     return this.allSets.get(x);
   }
 
-  clearSaved() {
-    // Only current sets
-    this.allSets.clear();
-    this.addSets(this.linkSaved, this.toJSON());
+  private linkAll(a: Uint64, b: Uint64) {
+    let linked = this.allSets.link(a, b);
+    if (linked) {
+      this.link_rpc(a, b);
+    }
+    return linked;
   }
 
-  clearAll() {
-    // Clear all sets everywhere
-    this.allSets.clear();
-    if (this.currentSets.clear()) {
-      let {rpc} = this;
-      if (rpc) {
-        rpc.invoke(CLEAR_METHOD_ID, {'id': this.rpcId});
-      }
+  linkSaved(a: Uint64, b: Uint64) {
+    // Remove first in pair from current
+    if (this.currentSets.equalSet(a, b)) {
+      this.currentSets.unlink(a);
       this.changed.dispatch();
     }
+    else if (this.linkAll(a, b)) {
+      this.changed.dispatch();
+    }
+  }
+
+  link(a: Uint64, b: Uint64) {
+    if (this.linkAll(a,b)) {
+      // Only new links go to current
+      this.currentSets.link(a, b);
+      this.changed.dispatch();
+    }
+  }
+
+  private clearAll() {
+    let cleared = this.allSets.clear();
+    if (cleared) {
+      this.clear_rpc();
+    }
+    return cleared;
+  }
+
+  clearSaved() {
+    this.clearAll();
+    // Link current to all sets
+    for (let pair of this.currentSets) {
+      this.linkAll(pair[0], pair[1]);
+    }
+    if (this.allSets.size !== 0) {
+      this.changed.dispatch();
+    }
+  }
+
+  clear() {
+    // Clear current from all sets
+    for (let pair of this.currentSets) {
+      this.unlinkAll(pair[1]);
+    }
+    // Clear current from current sets
+    if (this.currentSets.size !== 0) {
+      this.currentSets.clear();
+      this.changed.dispatch();
+    }
+  }
+
+  private unlinkAll(a: Uint64) {
+    let unlinked = this.allSets.unlink(a);
+    if (unlinked) {
+      this.unlink_rpc(a);
+    }
+    return unlinked;
   }
 
   unlink (a: Uint64) {
-    // Unlink from both groups
-    this.allSets.unlink(a);
     if (this.currentSets.unlink(a)) {
-      let {rpc} = this;
-      if (rpc) {
-        rpc.invoke(
-            REMOVE_METHOD_ID,
-            {'id': this.rpcId, 'al': a.low, 'ah': a.high});
-      }
+      // Unlink from all if in current
+      this.unlinkAll(a);
       this.changed.dispatch();
     }
   }
 
-  split(a: Uint64[], b: Uint64[]) {
-    // Split in both groups
-    this.currentSets.split(a, b);
-    if (this.currentSets.split(a, b)) {
-      let {rpc} = this;
-      if (rpc) {
-        const xfer_a = Uint64.encodeUint32Array(a);
-        const xfer_b = Uint64.encodeUint32Array(b);
+  private splitAll(a: Uint64[], b: Uint64[]) {
+    let split = this.allSets.split(a, b);
+    if (split) {
+      this.split_rpc(a, b);
+    }
+    return split;
+  }
 
-        rpc.invoke(
-            SPLIT_METHOD_ID,
-            { 
-              id: this.rpcId, 
-              a: xfer_a,
-              b: xfer_b,
-            }, 
-            [xfer_a.buffer, xfer_b.buffer]
-        );
-      }
+  split(a: Uint64[], b: Uint64[]) {
+    if (this.currentSets.split(a, b)) {
+      // Split in all if split in current
+      this.splitAll(a, b);
       this.changed.dispatch();
     }
   }
@@ -143,10 +158,13 @@ export class SharedDisjointUint64Sets extends SharedObjectCounterpart {
       let ids = [new Uint64(), new Uint64()];
       parseArray(obj, z => {
         parseArray(z, (s, index) => {
-          ids[index % 2].parseString(String(s), 10);
+          let prev = (index - 1) % 2;
+          let next = index % 2;
+          // Parse the next item to join
+          ids[next].parseString(String(s), 10);
           if (index !== 0) {
             // Link either current or saved elements
-            linker.call(this, ids[0], ids[1]);
+            linker.call(this, ids[prev], ids[next]);
           }
         });
       });
@@ -155,13 +173,61 @@ export class SharedDisjointUint64Sets extends SharedObjectCounterpart {
 
   // Restores current sets
   restoreState(obj: any) {
-    this.clearAll();
+    // Clear only current
+    this.clear();
+    // Restore current
     this.addSets(this.link, obj);
   }
+
   // Restores saved sets
   restoreSaved(obj: any) {
+    // Clear only saved
     this.clearSaved();
+    // Link to save or split from current
     this.addSets(this.linkSaved, obj);
+  }
+
+  private clear_rpc() {
+    let {rpc} = this;
+    if (rpc) {
+      rpc.invoke(CLEAR_METHOD_ID, {'id': this.rpcId});
+    }
+  }
+
+  private link_rpc(a: Uint64, b: Uint64) {
+    let {rpc} = this;
+    if (rpc) {
+      rpc.invoke(
+          ADD_METHOD_ID,
+          {'id': this.rpcId, 'al': a.low, 'ah': a.high, 'bl': b.low, 'bh': b.high});
+    }
+  }
+
+  private unlink_rpc(a: Uint64) {
+    let {rpc} = this;
+    if (rpc) {
+      rpc.invoke(
+          REMOVE_METHOD_ID,
+          {'id': this.rpcId, 'al': a.low, 'ah': a.high});
+    }
+  }
+
+  private split_rpc(a: Uint64[], b: Uint64[]) {
+    let {rpc} = this;
+    if (rpc) {
+      const xfer_a = Uint64.encodeUint32Array(a);
+      const xfer_b = Uint64.encodeUint32Array(b);
+
+      rpc.invoke(
+          SPLIT_METHOD_ID,
+          { 
+            id: this.rpcId, 
+            a: xfer_a,
+            b: xfer_b,
+          }, 
+          [xfer_a.buffer, xfer_b.buffer]
+      );
+    }
   }
 }
 
@@ -174,7 +240,7 @@ registerRPC(ADD_METHOD_ID, function(x) {
   tempA.high = x['ah'];
   tempB.low = x['bl'];
   tempB.high = x['bh'];
-  if (obj.currentSets.link(tempA, tempB)) {
+  if (obj.allSets.link(tempA, tempB)) {
     obj.changed.dispatch();
   }
 });
@@ -184,14 +250,14 @@ registerRPC(REMOVE_METHOD_ID, function(x) {
   tempA.low = x['al'];
   tempA.high = x['ah'];
 
-  if (obj.currentSets.unlink(tempA)) {
+  if (obj.allSets.unlink(tempA)) {
     obj.changed.dispatch();
   }
 });
 
 registerRPC(CLEAR_METHOD_ID, function(x) {
   let obj = <SharedDisjointUint64Sets>this.get(x['id']);
-  if (obj.currentSets.clear()) {
+  if (obj.allSets.clear()) {
     obj.changed.dispatch();
   }
 });
@@ -202,7 +268,7 @@ registerRPC(SPLIT_METHOD_ID, function (x) {
   const split_group_a = Uint64.decodeUint32Array(x.a);
   const split_group_b = Uint64.decodeUint32Array(x.b);
 
-  if (obj.currentSets.split(split_group_a, split_group_b)) {
+  if (obj.allSets.split(split_group_a, split_group_b)) {
     obj.changed.dispatch();
   }
 });
