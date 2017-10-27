@@ -63,7 +63,7 @@ export class SegmentationRenderLayer extends RenderLayer {
 
   private equivalencesShaderManager = new HashMapShaderManager('equivalences');
   private equivalencesHashMap =
-      new EquivalencesHashMap(this.displayState.segmentEquivalences.allSets);
+      new EquivalencesHashMap(this.displayState.segmentEquivalences.disjointSets);
   private gpuEquivalencesHashTable = GPUHashTable.get(this.gl, this.equivalencesHashMap.hashMap);
   private hasEquivalences: boolean;
 
