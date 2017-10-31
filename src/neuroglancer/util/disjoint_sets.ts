@@ -208,11 +208,15 @@ export class DisjointUint64Sets {
         let members = new Array<Uint64>();
         for (let member of setElementIterator(element)) {
           // Display only unsaved nodes
-          if (!this.isSaved(element)) {
+          if (!this.isSaved(member)) {
             members.push(member);
           }
         }
         if (members.length) {
+          // Add root element if needed
+          if (members.indexOf(element) === -1) {
+            members.unshift(element);
+          }
           members.sort(Uint64.compare);
           sets.push(members);
         }
