@@ -212,7 +212,7 @@ export class DisjointUint64Sets {
         let members = new Array<Uint64>();
         for (let member of setElementIterator(element)) {
           // Display only unsaved nodes
-          if (!this.isSaved(element)) {
+          if (!this.isSaved(element) || !this.isSaved(member)) {
             members.push(member);
           }
         }
