@@ -260,7 +260,7 @@ export class SegmentationUserLayer extends UserLayer implements EditorLayer {
 
   mergeOne(setId: Uint64, newId: Uint64) {
     let {segmentEquivalences} = this.displayState;
-    segmentEquivalences.link(setId, newId, true);
+    segmentEquivalences.link(setId, newId);
   }
 
   currentMerges(): Array<Array<string>> {
@@ -268,10 +268,10 @@ export class SegmentationUserLayer extends UserLayer implements EditorLayer {
     return segmentEquivalences.toJSON();
   }
 
-  restoreSaved(merges: Array<Array<string>>|undefined, save=false) {
+  restoreSaved(merges: Array<Array<string>>|undefined) {
     if (merges !== undefined) {
       let {segmentEquivalences} = this.displayState;
-      segmentEquivalences.restoreSaved(merges, save);
+      segmentEquivalences.restoreSaved(merges);
     }
   }
 
@@ -283,14 +283,14 @@ export class SegmentationUserLayer extends UserLayer implements EditorLayer {
       case 'restore': {
         // Restore all saved merges
         let merge = message.merge;
-        this.restoreSaved(merge, false);
+        this.restoreSaved(merge);
         break;
       }
       case 'save': {
         showEditStatus(this, 'Successfully saved');
         // Restore all saved merges
         let merge = message.merge;
-        this.restoreSaved(merge, true);
+        this.restoreSaved(merge);
         break;
       }
     }

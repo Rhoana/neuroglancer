@@ -116,36 +116,34 @@ export class DisjointUint64Sets {
     return (y === x || Uint64.equal(y, x));
   }
 
-  private makeSet(x: Uint64, save=false, v_save=false): Uint64 {
+  private makeSet(x: Uint64, save=false): Uint64 {
     let key = x.toString();
     let element = this.map.get(key);
     // Need to create new set
     if (element === undefined) {
       element = x.clone();
       initializeElement(element);
-      this.saveNode(element, true, v_save);
+      this.saveNode(element, save);
       (<any>element)[minSymbol] = element;
       this.map.set(key, element);
       return element;
     }
-    this.saveNode(element, save, v_save);
+    this.saveNode(element, save);
     return findRepresentative(element);
   }
 
-  private saveNode(node: any, save=false, v_save=false) {
+  private saveNode(node: any, save=false) {
     // Save or unsave the node
-    if (save) {
-      node[saveSymbol] = v_save;
-    }
+    node[saveSymbol] = save;
   }
 
   private isSaved(node: any): boolean {
     return node[saveSymbol];
   }
 
-  link(a: Uint64, b: Uint64, save=false, v_save=false): boolean {
-    a = this.makeSet(a, save, v_save);
-    b = this.makeSet(b, save, v_save);
+  link(a: Uint64, b: Uint64, save=false): boolean {
+    a = this.makeSet(a, save);
+    b = this.makeSet(b, save);
     if (a === b) {
       return false;
     }
@@ -158,8 +156,6 @@ export class DisjointUint64Sets {
     let aMin = (<any>a)[minSymbol];
     let bMin = (<any>b)[minSymbol];
     newNode[minSymbol] = Uint64.min(aMin, bMin);
-    // Save or unsave the root node
-    this.saveNode(newNode, save, v_save);
     return true;
   }
 
@@ -212,7 +208,7 @@ export class DisjointUint64Sets {
         let members = new Array<Uint64>();
         for (let member of setElementIterator(element)) {
           // Display only unsaved nodes
-          if (!this.isSaved(element) || !this.isSaved(member)) {
+          if (!this.isSaved(element)) {
             members.push(member);
           }
         }
