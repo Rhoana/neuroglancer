@@ -20,6 +20,9 @@ const rankSymbol = Symbol('disjoint_sets:rank');
 const parentSymbol = Symbol('disjoint_sets:parent');
 const nextSymbol = Symbol('disjoint_sets:next');
 const prevSymbol = Symbol('disjoint_sets:prev');
+const saveSymbol = Symbol('disjoint_sets:save');
+const minSymbol = Symbol('disjoint_sets:min');
+
 
 function findRepresentative(v: any): any {
   // First pass: find the root, which will be stored in ancestor.
@@ -43,11 +46,12 @@ function findRepresentative(v: any): any {
 function linkUnequalSetRepresentatives(i: any, j: any): any {
   let iRank = i[rankSymbol];
   let jRank = j[rankSymbol];
+  // Attach j to i tree
   if (iRank > jRank) {
     j[parentSymbol] = i;
     return i;
   }
-
+  // Attach i to j tree
   i[parentSymbol] = j;
   if (iRank === jRank) {
     j[rankSymbol] = jRank + 1;
@@ -69,7 +73,6 @@ function spliceCircularLists(i: any, j: any) {
 }
 
 
-
 function* setElementIterator(i: any) {
   let j = i;
   do {
@@ -81,10 +84,9 @@ function* setElementIterator(i: any) {
 function initializeElement(v: any) {
   v[parentSymbol] = v;
   v[rankSymbol] = 0;
+  v[saveSymbol] = false;
   v[nextSymbol] = v[prevSymbol] = v;
 }
-
-const minSymbol = Symbol('disjoint_sets:min');
 
 function isRootElement(v: any) {
   return v[parentSymbol] === v;
@@ -114,32 +116,46 @@ export class DisjointUint64Sets {
     return (y === x || Uint64.equal(y, x));
   }
 
-  private makeSet(x: Uint64): Uint64 {
+  private makeSet(x: Uint64, save=false): Uint64 {
     let key = x.toString();
-    let {map} = this;
-    let element = map.get(key);
+    let element = this.map.get(key);
+    // Need to create new set
     if (element === undefined) {
       element = x.clone();
       initializeElement(element);
+      this.saveNode(element, save);
       (<any>element)[minSymbol] = element;
-      map.set(key, element);
+      this.map.set(key, element);
       return element;
     }
+    this.saveNode(element, save);
     return findRepresentative(element);
   }
 
-  link(a: Uint64, b: Uint64): boolean {
-    a = this.makeSet(a);
-    b = this.makeSet(b);
+  private saveNode(node: any, save=false) {
+    // Save or unsave the node
+    node[saveSymbol] = save;
+  }
+
+  private isSaved(node: any): boolean {
+    return node[saveSymbol];
+  }
+
+  link(a: Uint64, b: Uint64, save=false): boolean {
+    a = this.makeSet(a, save);
+    b = this.makeSet(b, save);
     if (a === b) {
       return false;
     }
     this.generation++;
+    // Actually run the union operation
     let newNode = linkUnequalSetRepresentatives(a, b);
+    // Allow iteration through elements
     spliceCircularLists(a, b);
+    // Calcluate the new minimum
     let aMin = (<any>a)[minSymbol];
     let bMin = (<any>b)[minSymbol];
-    newNode[minSymbol] = Uint64.less(aMin, bMin) ? aMin : bMin;
+    newNode[minSymbol] = Uint64.min(aMin, bMin);
     return true;
   }
 
@@ -163,7 +179,7 @@ export class DisjointUint64Sets {
     return true;
   }
 
-  get size() {
+    get size() {
     return this.map.size;
   }
 
@@ -191,10 +207,19 @@ export class DisjointUint64Sets {
       if (isRootElement(element)) {
         let members = new Array<Uint64>();
         for (let member of setElementIterator(element)) {
-          members.push(member);
+          // Display only unsaved nodes
+          if (!this.isSaved(member)) {
+            members.push(member);
+          }
         }
-        members.sort(Uint64.compare);
-        sets.push(members);
+        if (members.length) {
+          // Add root element if needed
+          if (members.indexOf(element) === -1) {
+            members.unshift(element);
+          }
+          members.sort(Uint64.compare);
+          sets.push(members);
+        }
       }
     }
     sets.sort((a, b) => Uint64.compare(a[0], b[0]));

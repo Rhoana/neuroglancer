@@ -138,6 +138,10 @@ export class DisplayContext extends RefCounted {
 
   private update() {
     this.updatePending = null;
+    /*
+     * Display context handlers should:
+     *   Reset time to wait for next frame
+     */
     this.updateStarted.dispatch();
     if (this.needsRedraw) {
       this.needsRedraw = false;

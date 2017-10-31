@@ -17,6 +17,7 @@
 require('./status.css');
 
 let statusContainer: HTMLElement|null = null;
+let statusMap = new Map<StatusMessage, StatusMessage>();
 
 export var DEFAULT_STATUS_DELAY = 200;
 
@@ -27,11 +28,16 @@ export class StatusMessage {
   private timer: number|null;
   constructor(delay: Delay = false) {
     if (statusContainer === null) {
-      statusContainer = document.createElement('ul');
+      statusContainer = document.createElement('div');
       statusContainer.id = 'statusContainer';
+      // Add button to dismiss all
+      let button = document.createElement('button');
+      button.addEventListener('click', StatusMessage.disposeAll);
+      button.textContent = 'Dismiss All';
+      statusContainer.appendChild(button);
       document.body.appendChild(statusContainer);
     }
-    let element = document.createElement('li');
+    let element = document.createElement('div');
     this.element = element;
     if (delay === true) {
       delay = DEFAULT_STATUS_DELAY;
@@ -42,7 +48,13 @@ export class StatusMessage {
     } else {
       this.timer = null;
     }
+    statusMap.set(this, this);
     statusContainer.appendChild(element);
+  }
+  static disposeAll() {
+    statusMap.forEach((status) => {
+      status.dispose();
+    });
   }
   dispose() {
     statusContainer!.removeChild(this.element);
@@ -50,6 +62,7 @@ export class StatusMessage {
     if (this.timer !== null) {
       clearTimeout(this.timer);
     }
+    statusMap.delete(this);
   }
   setText(text: string, makeVisible?: boolean) {
     this.element.textContent = text;
@@ -70,7 +83,14 @@ export class StatusMessage {
     }
     this.element.style.display = value ? 'block' : 'none';
   }
-
+  makeDismissButton() {
+    let button = document.createElement('button');
+    button.textContent = 'Dismiss';
+    button.addEventListener('click', () => {
+      this.dispose();
+    });
+    this.element.appendChild(button);
+  }
   static forPromise<T>(
       promise: Promise<T>,
       options: {initialMessage: string, delay?: Delay, errorPrefix: string}): Promise<T> {
@@ -86,22 +106,18 @@ export class StatusMessage {
       }
       let {errorPrefix = ''} = options;
       status.element.textContent = errorPrefix + msg + '  ';
-      let button = document.createElement('button');
-      button.textContent = 'Dismiss';
-      button.addEventListener('click', () => {
-        status.dispose();
-      });
-      status.element.appendChild(button);
+      status.makeDismissButton();
       status.setVisible(true);
     });
     return promise;
   }
 
   static showMessage(message: string): StatusMessage {
-    const msg = new StatusMessage();
-    msg.element.textContent = message;
-    msg.setVisible(true);
-    return msg;
+    const status = new StatusMessage();
+    status.element.textContent = message;
+    status.makeDismissButton();
+    status.setVisible(true);
+    return status;
   }
 
   static showTemporaryMessage(message: string, closeAfter: number = 2000): StatusMessage {

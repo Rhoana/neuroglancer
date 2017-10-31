@@ -209,4 +209,38 @@ export class Uint64 {
   and(other: Uint64) {
     return new Uint64(this.low & other.low, this.high & other.high);
   }
+
+  static encodeUint32Array (array: Uint64[]) : Uint32Array {
+    const transferable = new Uint32Array(array.length * 2);
+
+    for (let i = 0; i < array.length; i++) {
+      const num = array[i];
+
+      transferable[2 * i]      = num.low;
+      transferable[2 * i + 1]  = num.high;
+    }
+
+    return transferable;
+  }
+
+  static decodeUint32Array (array: Uint32Array|ArrayBuffer) : Uint64[] {
+    if (array instanceof ArrayBuffer) {
+      array = new Uint32Array(array);
+    }
+
+    if (array.length % 2 === 1) {
+      throw new Error(`Decode error. Length of input array was not even: ${array.length}`);
+    }
+
+    const decoded = new Array<Uint64>(array.length / 2);
+
+    for (let i = 0; i < decoded.length; i++) {
+      decoded[i] = new Uint64(
+        array[2 * i],
+        array[2 * i + 1],
+      );
+    }
+
+    return decoded;
+  }
 }

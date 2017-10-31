@@ -36,6 +36,7 @@ export function getDefaultGlobalBindings() {
     map.set('keyh', 'help');
 
     map.set('space', 'toggle-layout');
+    map.set('slash', 'toggle-edit-mode');
     defaultGlobalBindings = map;
   }
   return defaultGlobalBindings;

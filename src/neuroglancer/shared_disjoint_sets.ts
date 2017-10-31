@@ -41,8 +41,8 @@ export class SharedDisjointUint64Sets extends SharedObjectCounterpart {
     super.disposed();
   }
 
-  link(a: Uint64, b: Uint64) {
-    if (this.disjointSets.link(a, b)) {
+  link(a: Uint64, b: Uint64, save=false) {
+    if (this.disjointSets.link(a, b, save)) {
       let {rpc} = this;
       if (rpc) {
         rpc.invoke(
@@ -95,6 +95,25 @@ export class SharedDisjointUint64Sets extends SharedObjectCounterpart {
         });
       });
     }
+    this.changed.dispatch();
+  }
+
+  /**
+   * Restores the state from a JSON representation.
+   */
+  restoreSaved(obj: any) {
+    if (obj !== undefined) {
+      let ids = [new Uint64(), new Uint64()];
+      parseArray(obj, z => {
+        parseArray(z, (s, index) => {
+          ids[index % 2].parseString(String(s), 10);
+          if (index !== 0) {
+            this.link(ids[0], ids[1], true);
+          }
+        });
+      });
+    }
+    this.changed.dispatch();
   }
 }
 

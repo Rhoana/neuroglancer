@@ -52,6 +52,10 @@ export class SegmentSelectionState extends RefCounted {
         existingValue.low = value.low;
         existingValue.high = value.high;
         this.hasSelectedSegment = true;
+        /*
+         * Selection handlers should:
+         *   Schedule redraws for visible panels
+         */
         this.changed.dispatch();
       }
     }
@@ -64,6 +68,10 @@ export class SegmentSelectionState extends RefCounted {
   bindTo(layerSelectedValues: LayerSelectedValues, userLayer: UserLayer) {
     let temp = new Uint64();
     this.registerDisposer(layerSelectedValues.changed.add(() => {
+      /*
+       * handler should:
+       *   set value and call Selection handlers
+       */
       let value = layerSelectedValues.get(userLayer);
       if (typeof value === 'number') {
         temp.low = value;

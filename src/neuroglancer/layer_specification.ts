@@ -26,6 +26,35 @@ import {vec3} from 'neuroglancer/util/geom';
 import {verifyObject, verifyObjectProperty, verifyOptionalString} from 'neuroglancer/util/json';
 import {NullarySignal, Signal} from 'neuroglancer/util/signal';
 import {Trackable} from 'neuroglancer/util/trackable';
+import {EditorLayer} from 'neuroglancer/editor/layer';
+
+/*
+ * Show status message for websocket connection
+ */
+export function showEditStatus(editorLayer: EditorLayer, notice: string) {
+  // Present status message regarding editor source
+  let {host, channel} = editorLayer.editorSource;
+  let notification = `${notice}: ${channel} at ${host}`;
+  StatusMessage.showMessage(notification);
+}
+
+/*
+ * Produce error message if no websocket connection
+ */
+export function sendSocketWithStatus(editorLayer: EditorLayer, msg: string): Promise<string> {
+  let socketPromise = new Promise(function(resolve, reject) {
+    // Send a message through the websocket
+    editorLayer.editorSocket.send(resolve, reject, msg);
+  }) as Promise<string>;
+  // Notify of websocket failure to send
+  let {host, channel} = editorLayer.editorSource;
+  let messages = {
+    initialMessage: `Trying to write to ${host}.`,
+    delay: true,
+    errorPrefix: `Cannot write to ${channel} at ${host}:`,
+  };
+  return StatusMessage.forPromise(socketPromise, messages);
+}
 
 export function getVolumeWithStatusMessage(
     dataSourceProvider: DataSourceProvider, chunkManager: ChunkManager, x: string,
