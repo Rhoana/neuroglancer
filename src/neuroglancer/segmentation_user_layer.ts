@@ -204,6 +204,11 @@ export class SegmentationUserLayer extends UserLayer implements EditorLayer {
     this.addRenderLayer(this.meshLayer);
   }
 
+  disposed() {
+    this.editorSocket.close();
+    super.disposed();
+  }
+
   toJSON() {
     let x: any = {'type': 'segmentation'};
     x['source'] = this.volumePath;

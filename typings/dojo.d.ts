@@ -27,9 +27,10 @@ declare module 'dojo_websocket' {
 
   // Wrapper for dojo websocket
   interface EditorSocket {
+    close: () => void,
     // returns link state
     open: (resolve: fn, reject: fn) => void,
-    // Takes an object to jsonify
+    // Takes a JSON formatted string
     send: (resolve: fn, reject: fn, m: string) => void,
   }
 
