@@ -41,6 +41,10 @@ EditorSocket.prototype.send = function(resolve, reject, m) {
   }
 };
 
+EditorSocket.prototype.close = function() {
+  this._socket.close()
+}
+
 /*
  * Private Methods
  */
