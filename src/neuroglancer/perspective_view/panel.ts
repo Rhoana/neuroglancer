@@ -248,6 +248,11 @@ export class PerspectivePanel extends RenderedDataPanel {
     this.pickIDs.setMouseState(
         mouseState,
         offscreenFramebuffer.readPixelAsUint32(OffscreenTextures.PICK, glWindowX, glWindowY));
+
+    // Call the edit action on the active editor Layer
+    let {layerManager, editorState} = this.viewer;
+    layerManager.uniqueAction('edit', layerManager.editorLayer, editorState);
+
     return true;
   }
 
