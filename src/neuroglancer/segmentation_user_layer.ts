@@ -226,6 +226,9 @@ export class SegmentationUserLayer extends UserLayer implements EditorLayer {
     if (segmentEquivalences.size > 0) {
       x['equivalences'] = segmentEquivalences.toJSON();
     }
+    if (segmentEquivalences.hasSplits) {
+      x['splits'] = segmentEquivalences.splitJSON();
+    }
     let {clipBounds} = this.displayState;
     if (clipBounds.value) {
       x['clipBounds'] = {
@@ -268,9 +271,19 @@ export class SegmentationUserLayer extends UserLayer implements EditorLayer {
     segmentEquivalences.link(setId, newId);
   }
 
+  splitOne() {
+    let {segmentEquivalences} = this.displayState;
+    segmentEquivalences.split();
+  }
+
   currentMerges(): Array<Array<string>> {
     let {segmentEquivalences} = this.displayState;
     return segmentEquivalences.toJSON();
+  }
+
+  currentSplits(): Array<string> {
+    let {segmentEquivalences} = this.displayState;
+    return segmentEquivalences.splitJSON();
   }
 
   restoreSaved(merges: Array<Array<string>>|undefined) {
@@ -301,6 +314,43 @@ export class SegmentationUserLayer extends UserLayer implements EditorLayer {
     }
   }
 
+  handleSplitAction(action: string, editorState: EditorState) {
+    let {segmentSelectionState} = this.displayState;
+    let segment = segmentSelectionState.selectedSegment;
+    // Allow splits
+    switch (action) {
+      case 'select': {
+        let haveSegment = segmentSelectionState.hasSelectedSegment;
+        // Begin split of selected
+        if (haveSegment && editorState.segment === undefined) {
+          editorState.segment = segment.clone();
+          // Set the starting coordintates
+          let {voxelSize, startPoint, mouseState} = editorState;
+          voxelSize.voxelFromSpatial(startPoint, mouseState.position);
+          break;
+        }
+        // End split of segment
+        editorState.segment = undefined;
+        break;
+      }
+      case 'edit': {
+        if (editorState.segment) {
+          // Set the ending coordintates
+          let {voxelSize, endPoint, mouseState} = editorState;
+          voxelSize.voxelFromSpatial(endPoint, mouseState.position);
+          // Actually split the segment
+          console.log(editorState.startPoint, editorState.endPoint);
+          this.splitOne();
+        }
+        break;
+      }
+      default: {
+        this.handleAction(action);
+        break;
+      }
+    }
+  }
+
   handleMergeAction(action: string, editorState: EditorState) {
     let {segmentSelectionState} = this.displayState;
     let haveSegment = segmentSelectionState.hasSelectedSegment;
@@ -322,7 +372,10 @@ export class SegmentationUserLayer extends UserLayer implements EditorLayer {
       case 'edit': {
         if (haveSegment && editorState.segment) {
           let segment = segmentSelectionState.selectedSegment;
-          this.mergeOne(editorState.segment, segment);
+          // Actually merge two different segments
+          if (!Uint64.equal(editorState.segment, segment)) {
+            this.mergeOne(editorState.segment, segment);
+          }
         }
         break;
       }
@@ -338,6 +391,10 @@ export class SegmentationUserLayer extends UserLayer implements EditorLayer {
     switch (editorState.editor.value) {
       case EDITORS.MERGE: {
         this.handleMergeAction(action, editorState);
+        break;
+      }
+      case EDITORS.SPLIT: {
+        this.handleSplitAction(action, editorState);
         break;
       }
       default: {
@@ -360,9 +417,11 @@ export class SegmentationUserLayer extends UserLayer implements EditorLayer {
       case 'save': {
         // Get current merges
         let merge = this.currentMerges();
+        let split = this.currentSplits();
         let msg = JSON.stringify({
           action: 'save',
           merge: merge,
+          split: split,
         });
         // Send current merges via websocket
         sendSocketWithStatus(this, msg);

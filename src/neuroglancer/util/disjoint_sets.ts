@@ -20,6 +20,7 @@ const rankSymbol = Symbol('disjoint_sets:rank');
 const parentSymbol = Symbol('disjoint_sets:parent');
 const nextSymbol = Symbol('disjoint_sets:next');
 const prevSymbol = Symbol('disjoint_sets:prev');
+const splitSymbol = Symbol('disjoint_sets:split');
 const saveSymbol = Symbol('disjoint_sets:save');
 const minSymbol = Symbol('disjoint_sets:min');
 
@@ -72,7 +73,6 @@ function spliceCircularLists(i: any, j: any) {
   jPrev[nextSymbol] = i;
 }
 
-
 function* setElementIterator(i: any) {
   let j = i;
   do {
@@ -81,15 +81,49 @@ function* setElementIterator(i: any) {
   } while (j !== i);
 }
 
-function initializeElement(v: any) {
+function initializeElement(x: any): Uint64 {
+  let v = x.clone();
   v[parentSymbol] = v;
   v[rankSymbol] = 0;
   v[saveSymbol] = false;
   v[nextSymbol] = v[prevSymbol] = v;
+  v[splitSymbol] = x[splitSymbol] || 0;
+  return v;
 }
 
 function isRootElement(v: any) {
   return v[parentSymbol] === v;
+}
+
+// Set uint64 ID value and split value
+export function setRegion(x: Uint64, s: string) {
+  let [main, split] = s.split(':');
+  let split_id = parseInt(split) || 0;
+  let v = x.parseString(main, 10) as any;
+  v[splitSymbol] = split_id;
+}
+export function getRegionId(x: Uint64): number {
+  return (x as any)[splitSymbol] as number;
+}
+// Display uint64 ID value and split value as strings
+export function getRegion(x: Uint64): string {
+  let split_id = getRegionId(x);
+  let s = x.toString();
+  if (split_id) {
+    return s + ':' + split_id.toString(); 
+  }
+  return s;
+}
+
+export interface SplitState {
+  // All regions for all main IDs
+  mainMap: Map<string, number[]>
+  // All regions for all boundaries
+  zMap: Map<string, number[]>
+  yMap: Map<string, number[]>
+  xMap: Map<string, number[]>
+  // List all variables for all regions
+  subregions: Array<[string, string, string, string]>
 }
 
 /**
@@ -98,9 +132,32 @@ function isRootElement(v: any) {
  * Supports merging sets, retrieving the minimum Uint64 value contained in a set (the representative
  * value), and iterating over the elements contained in a set.
  */
+let SPLIT_0A = initializeElement(new Uint64())
+let SPLIT_0B = initializeElement(new Uint64())
+setRegion(SPLIT_0A, '0:1')
+setRegion(SPLIT_0B, '0:2')
+
 export class DisjointUint64Sets {
   private map = new Map<string, Uint64>();
   generation = 0;
+
+  splitState: SplitState = {
+    zMap: new Map([
+      ['0:1', [0]]
+    ]),
+    yMap: new Map([
+      ['1:2', [0]]
+    ]),
+    xMap: new Map([
+      ['2:3', [0]]
+    ]),
+    mainMap: new Map([
+      ['45', [0]]
+    ]),
+    subregions: [
+      ['45:1', '2:3', '1:2', '0:1']
+    ],
+  }
 
   get(x: Uint64): Uint64 {
     let key = x.toString();
@@ -121,8 +178,7 @@ export class DisjointUint64Sets {
     let element = this.map.get(key);
     // Need to create new set
     if (element === undefined) {
-      element = x.clone();
-      initializeElement(element);
+      element = initializeElement(x);
       this.saveNode(element, save);
       (<any>element)[minSymbol] = element;
       this.map.set(key, element);
@@ -139,6 +195,10 @@ export class DisjointUint64Sets {
 
   private isSaved(node: any): boolean {
     return node[saveSymbol];
+  }
+
+  split() {
+    return;
   }
 
   link(a: Uint64, b: Uint64, save=false): boolean {
@@ -179,8 +239,12 @@ export class DisjointUint64Sets {
     return true;
   }
 
-    get size() {
+  get size() {
     return this.map.size;
+  }
+
+  get hasSplits() {
+    return this.splitState.subregions.length > 0;
   }
 
   * mappings(temp = <[Uint64, Uint64]>new Array<Uint64>(2)) {
@@ -198,8 +262,8 @@ export class DisjointUint64Sets {
   /**
    * Returns an array of arrays of strings, where the arrays contained in the outer array correspond
    * to the disjoint sets, and the strings are the base-10 string representations of the members of
-   * each set.  The members are sorted in numerical order, and the sets are sorted in numerical
-   * order of their smallest elements.
+   * each set optionally followed by a colon and the subregion.  The members are sorted in numerical
+   * order, and the sets are sorted in numerical order of their smallest elements.
    */
   toJSON(): string[][] {
     let sets = new Array<Uint64[]>();
@@ -223,6 +287,20 @@ export class DisjointUint64Sets {
       }
     }
     sets.sort((a, b) => Uint64.compare(a[0], b[0]));
-    return sets.map(set => set.map(element => element.toString()));
+    return sets.map(set => set.map(x => getRegion(x)));
+  }
+
+  /**
+   * Returns an array of arrays of strings, where the arrays in the outer array correspond
+   * to individual subregions. Each subregion string has 8 base-10 encoded integres, each
+   * separated by a colon. Item 0 is the original ID, and item 1 is the subregion. Items
+   * 2 - 7 give the x0:x1:y0:y1:z0:z1 bounds of the region in chunk-indexed coordinates.
+   * The subregions are sorted ascending from lowest to highest priority.
+   */
+  splitJSON(): string[] {
+    let split_stringify = (subregion: string[]) => {
+      return subregion.join(':');
+    }
+    return this.splitState.subregions.map(split_stringify);
   }
 }

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import {DisjointUint64Sets} from 'neuroglancer/util/disjoint_sets';
+import {DisjointUint64Sets, setRegion} from 'neuroglancer/util/disjoint_sets';
 import {parseArray} from 'neuroglancer/util/json';
 import {NullarySignal} from 'neuroglancer/util/signal';
 import {Uint64} from 'neuroglancer/util/uint64';
@@ -39,6 +39,10 @@ export class SharedDisjointUint64Sets extends SharedObjectCounterpart {
     this.disjointSets = <any>undefined;
     this.changed = <any>undefined;
     super.disposed();
+  }
+
+  split() {
+    this.disjointSets.split();
   }
 
   link(a: Uint64, b: Uint64, save=false) {
@@ -75,8 +79,16 @@ export class SharedDisjointUint64Sets extends SharedObjectCounterpart {
     return this.disjointSets.size;
   }
 
+  get hasSplits() {
+    return this.disjointSets.hasSplits;
+  }
+
   toJSON() {
     return this.disjointSets.toJSON();
+  }
+
+  splitJSON() {
+    return this.disjointSets.splitJSON();
   }
 
   /**
@@ -88,7 +100,7 @@ export class SharedDisjointUint64Sets extends SharedObjectCounterpart {
       let ids = [new Uint64(), new Uint64()];
       parseArray(obj, z => {
         parseArray(z, (s, index) => {
-          ids[index % 2].parseString(String(s), 10);
+          setRegion(ids[index % 2], String(s));
           if (index !== 0) {
             this.link(ids[0], ids[1]);
           }
@@ -106,7 +118,7 @@ export class SharedDisjointUint64Sets extends SharedObjectCounterpart {
       let ids = [new Uint64(), new Uint64()];
       parseArray(obj, z => {
         parseArray(z, (s, index) => {
-          ids[index % 2].parseString(String(s), 10);
+          setRegion(ids[index % 2], String(s));
           if (index !== 0) {
             this.link(ids[0], ids[1], true);
           }

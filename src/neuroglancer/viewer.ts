@@ -138,10 +138,14 @@ export class Viewer extends RefCounted implements ViewerState {
 
   layerSpecification: LayerListSpecification;
   layoutName = new TrackableValue<string>(LAYOUTS[0][0], validateLayoutName);
-  // First editor is first UI option
+  // All references needed by the editor
   editorState = <EditorState> {
+    // First editor is first UI option
     editor: trackableEditor(editorUI.keys().next().value),
-    segment: undefined,
+    voxelSize: this.navigationState.voxelSize,
+    mouseState: this.mouseState,
+    startPoint: vec3.create(),
+    endPoint: vec3.create(),
   }
 
   state = new CompoundTrackable();
@@ -304,8 +308,7 @@ export class Viewer extends RefCounted implements ViewerState {
           // Set editor state when user selects option
           this.registerEventListener(select, 'change', () => {
             let value = parseInt(select.value, 10);
-            let {editor} = this.editorState;
-            editor.restoreState(value);
+            this.setEditor(value);
           });
         });
       }
@@ -426,9 +429,14 @@ export class Viewer extends RefCounted implements ViewerState {
     this.dataDisplayLayout = layoutCreator(element, this);
   }
 
+  setEditor(v: number) {
+    this.editorState.segment = undefined;
+    this.editorState.editor.restoreState(v);
+  }
+
   toggleEditor() {
     let {editor} = this.editorState;
-    editor.restoreState(editor.value + 1);
+    this.setEditor(editor.value + 1);
     // Set the selector if possible
     let elem = document.getElementById('edit-option');
     if (elem) {
