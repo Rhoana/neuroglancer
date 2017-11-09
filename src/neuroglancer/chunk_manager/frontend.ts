@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 
-import {AvailableCapacity, CHUNK_MANAGER_RPC_ID, CHUNK_QUEUE_MANAGER_RPC_ID, ChunkSourceParametersConstructor, ChunkState} from 'neuroglancer/chunk_manager/base';
+import {CHUNK_MANAGER_RPC_ID, CHUNK_QUEUE_MANAGER_RPC_ID, ChunkSourceParametersConstructor, ChunkState} from 'neuroglancer/chunk_manager/base';
+import {SharedWatchableValue} from 'neuroglancer/shared_watchable_value';
+import {TrackableValue} from 'neuroglancer/trackable_value';
 import {Borrowed} from 'neuroglancer/util/disposable';
 import {stableStringify} from 'neuroglancer/util/json';
 import {StringMemoize} from 'neuroglancer/util/memoize';
@@ -42,6 +44,25 @@ export abstract class Chunk {
   }
 }
 
+function validateLimitValue(x: any) {
+  if (typeof x !== 'number' || x < 0) {
+    throw new Error(`Expected non-negative number as limit, but received: ${JSON.stringify(x)}`);
+  }
+  return x;
+}
+
+export class CapacitySpecification {
+  sizeLimit: TrackableValue<number>;
+  itemLimit: TrackableValue<number>;
+  constructor({
+    defaultItemLimit = Number.POSITIVE_INFINITY,
+    defaultSizeLimit = Number.POSITIVE_INFINITY
+  } = {}) {
+    this.sizeLimit = new TrackableValue<number>(defaultSizeLimit, validateLimitValue);
+    this.itemLimit = new TrackableValue<number>(defaultItemLimit, validateLimitValue);
+  }
+}
+
 @registerSharedObjectOwner(CHUNK_QUEUE_MANAGER_RPC_ID)
 export class ChunkQueueManager extends SharedObject {
   visibleChunksChanged = new NullarySignal();
@@ -56,16 +77,28 @@ export class ChunkQueueManager extends SharedObject {
 
   chunkUpdateDelay: number = 30;
 
-  constructor(rpc: RPC, public gl: GL, capacities: {
-    gpuMemory: AvailableCapacity,
-    systemMemory: AvailableCapacity,
-    download: AvailableCapacity
+  constructor(rpc: RPC, public gl: GL, public capacities: {
+    gpuMemory: CapacitySpecification,
+    systemMemory: CapacitySpecification,
+    download: CapacitySpecification
   }) {
     super();
+
+    const makeCapacityCounterparts = (capacity: CapacitySpecification) => {
+      return {
+        itemLimit:
+            this.registerDisposer(SharedWatchableValue.makeFromExisting(rpc, capacity.itemLimit))
+                .rpcId,
+        sizeLimit:
+            this.registerDisposer(SharedWatchableValue.makeFromExisting(rpc, capacity.sizeLimit))
+                .rpcId,
+      };
+    };
+
     this.initializeCounterpart(rpc, {
-      'gpuMemoryCapacity': capacities.gpuMemory.toObject(),
-      'systemMemoryCapacity': capacities.systemMemory.toObject(),
-      'downloadCapacity': capacities.download.toObject()
+      'gpuMemoryCapacity': makeCapacityCounterparts(capacities.gpuMemory),
+      'systemMemoryCapacity': makeCapacityCounterparts(capacities.systemMemory),
+      'downloadCapacity': makeCapacityCounterparts(capacities.download),
     });
   }
 
@@ -81,56 +114,63 @@ export class ChunkQueueManager extends SharedObject {
   }
   processPendingChunkUpdates() {
     let deadline = this.chunkUpdateDeadline;
-    if (deadline !== null && Date.now() > deadline) {
-      // No time to perform chunk update now, we will wait some more.
-      setTimeout(this.processPendingChunkUpdates.bind(this), this.chunkUpdateDelay);
-      return;
+    if (deadline === null) {
+      deadline = Date.now() + 30;
     }
-    let update = this.pendingChunkUpdates;
-    let {rpc} = this;
-    let source = rpc!.get(update['source']);
-    if (DEBUG_CHUNK_UPDATES) {
-      console.log(
-          `${Date.now()} Chunk.update processed: ${source.rpcId} ` +
-          `${update['id']} ${update['state']}`);
-    }
-    let newState: number = update['state'];
-    if (newState === ChunkState.EXPIRED) {
-      // FIXME: maybe use freeList for chunks here
-      source.deleteChunk(update['id']);
-    } else {
-      let chunk: Chunk;
-      let key = update['id'];
-      if (update['new']) {
-        chunk = source.getChunk(update);
-        source.addChunk(key, chunk);
-      } else {
-        chunk = source.chunks.get(key);
+    while (true) {
+      if (Date.now() > deadline) {
+        // No time to perform chunk update now, we will wait some more.
+        setTimeout(this.processPendingChunkUpdates.bind(this), this.chunkUpdateDelay);
+        return;
       }
-      let oldState = chunk.state;
-      if (newState !== oldState) {
-        switch (newState) {
-          case ChunkState.GPU_MEMORY:
-            // console.log("Copying to GPU", chunk);
-            chunk.copyToGPU(this.gl);
-            this.visibleChunksChanged.dispatch();
-            break;
-          case ChunkState.SYSTEM_MEMORY:
-            chunk.freeGPUMemory(this.gl);
-            break;
-          default:
-            throw new Error(`INTERNAL ERROR: Invalid chunk state: ${ChunkState[newState]}`);
+      let update = this.pendingChunkUpdates;
+      let {rpc} = this;
+      let source = rpc!.get(update['source']);
+      if (DEBUG_CHUNK_UPDATES) {
+        console.log(
+            `${Date.now()} Chunk.update processed: ${source.rpcId} ` +
+            `${update['id']} ${update['state']}`);
+      }
+      let newState: number = update['state'];
+      if (newState === ChunkState.EXPIRED) {
+        // FIXME: maybe use freeList for chunks here
+        source.deleteChunk(update['id']);
+      } else {
+        let chunk: Chunk;
+        let key = update['id'];
+        if (update['new']) {
+          chunk = source.getChunk(update);
+          source.addChunk(key, chunk);
+        } else {
+          chunk = source.chunks.get(key);
+        }
+        let oldState = chunk.state;
+        if (newState !== oldState) {
+          switch (newState) {
+            case ChunkState.GPU_MEMORY:
+              // console.log("Copying to GPU", chunk);
+              chunk.copyToGPU(this.gl);
+              this.visibleChunksChanged.dispatch();
+              break;
+            case ChunkState.SYSTEM_MEMORY:
+              chunk.freeGPUMemory(this.gl);
+              break;
+            default:
+              throw new Error(`INTERNAL ERROR: Invalid chunk state: ${ChunkState[newState]}`);
+          }
         }
       }
-    }
-    let nextUpdate = this.pendingChunkUpdates = update.nextUpdate;
-    if (nextUpdate != null) {
-      this.scheduleChunkUpdate();
-    } else {
-      this.pendingChunkUpdatesTail = null;
+      let nextUpdate = this.pendingChunkUpdates = update.nextUpdate;
+      --(<any>window).numPendingChunkUpdates;
+      if (nextUpdate == null) {
+        this.pendingChunkUpdatesTail = null;
+        break;
+      }
     }
   }
 }
+
+(<any>window).numPendingChunkUpdates = 0;
 
 registerRPC('Chunk.update', function(x) {
   let source = this.get(x['source']);
@@ -141,6 +181,9 @@ registerRPC('Chunk.update', function(x) {
   }
   let queueManager = source.chunkManager.chunkQueueManager;
   let pendingTail = queueManager.pendingChunkUpdatesTail;
+  if (++(<any>window).numPendingChunkUpdates > 3) {
+    //console.log(`numPendingChunkUpdates=${(<any>window).numPendingChunkUpdates}`);
+  }
   if (pendingTail == null) {
     queueManager.pendingChunkUpdates = x;
     queueManager.pendingChunkUpdatesTail = x;
@@ -180,7 +223,7 @@ export class ChunkManager extends SharedObject {
       const newSource = new constructorFunction(this, options);
       newSource.initializeCounterpart(this.rpc!, {});
       return newSource;
-    });
+    }) as T;
   }
 }
 

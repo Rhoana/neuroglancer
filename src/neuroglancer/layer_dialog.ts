@@ -165,7 +165,7 @@ export class LayerDialog extends Overlay {
         this.existingLayer.name = this.nameInputElement.value;
         this.manager.layerManager.layersChanged.dispatch();
       } else {
-        this.manager.layerManager.addManagedLayer(
+        this.manager.add(
             this.manager.getLayer(this.nameInputElement.value, this.sourceInput.value));
       }
       this.dispose();
@@ -198,11 +198,7 @@ export class LayerDialog extends Overlay {
       let baseSuggestedName = this.manager.dataSourceProvider.suggestLayerName(url);
       let {nameInputElement} = this;
       if (this.nameInputElement.value === '') {
-        let suggestedName = baseSuggestedName;
-        let suffix = 0;
-        while (this.manager.layerManager.getLayerByName(suggestedName) !== undefined) {
-          suggestedName = baseSuggestedName + (++suffix);
-        }
+        let suggestedName = this.manager.layerManager.getUniqueLayerName(baseSuggestedName);
         nameInputElement.value = suggestedName;
         nameInputElement.setSelectionRange(0, suggestedName.length);
         this.validateName();

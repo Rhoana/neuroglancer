@@ -20,13 +20,13 @@ import {makeRenderedPanelVisibleLayerTracker, MouseSelectionState, VisibilityTra
 import {PickIDManager} from 'neuroglancer/object_picking';
 import {RenderedDataPanel, RenderedDataViewerState} from 'neuroglancer/rendered_data_panel';
 import {SliceView, SliceViewRenderHelper} from 'neuroglancer/sliceview/frontend';
-import {ElementVisibilityFromTrackableBoolean, TrackableBoolean} from 'neuroglancer/trackable_boolean';
+import {TrackableBoolean} from 'neuroglancer/trackable_boolean';
 import {ActionEvent, registerActionListener} from 'neuroglancer/util/event_action_map';
 import {identityMat4, mat4, vec3, vec4} from 'neuroglancer/util/geom';
 import {startRelativeMouseDrag} from 'neuroglancer/util/mouse_drag';
 import {FramebufferConfiguration, makeTextureBuffers, OffscreenCopyHelper} from 'neuroglancer/webgl/offscreen';
 import {ShaderBuilder, ShaderModule} from 'neuroglancer/webgl/shader';
-import {ScaleBarWidget} from 'neuroglancer/widget/scale_bar';
+import {ScaleBarTexture} from 'neuroglancer/widget/scale_bar';
 
 export interface SliceViewerState extends RenderedDataViewerState {
   showScaleBar: TrackableBoolean;
@@ -88,6 +88,8 @@ export class SliceViewPanelRenderLayer extends VisibilityTrackedRenderLayer {
 }
 
 export class SliceViewPanel extends RenderedDataPanel {
+  viewer: SliceViewerState;
+
   private axesLineHelper = this.registerDisposer(AxesLineHelper.get(this.gl));
   private sliceViewRenderHelper =
       this.registerDisposer(SliceViewRenderHelper.get(this.gl, sliceViewPanelEmitColor));
@@ -102,8 +104,9 @@ export class SliceViewPanel extends RenderedDataPanel {
       this.gl, {colorBuffers: makeTextureBuffers(this.gl, OffscreenTextures.NUM_TEXTURES)}));
 
   private offscreenCopyHelper = this.registerDisposer(OffscreenCopyHelper.get(this.gl));
+  private scaleBarCopyHelper = this.registerDisposer(OffscreenCopyHelper.get(this.gl));
 
-  private scaleBarWidget = this.registerDisposer(new ScaleBarWidget());
+  private scaleBarTexture = this.registerDisposer(new ScaleBarTexture(this.gl));
 
   get navigationState() {
     return this.sliceView.navigationState;
@@ -167,12 +170,11 @@ export class SliceViewPanel extends RenderedDataPanel {
     }
     this.registerDisposer(viewer.showAxisLines.changed.add(redrawPanel));
 
-    {
-      let scaleBar = this.scaleBarWidget.element;
-      this.registerDisposer(
-          new ElementVisibilityFromTrackableBoolean(viewer.showScaleBar, scaleBar));
-      this.element.appendChild(scaleBar);
-    }
+    this.registerDisposer(viewer.showScaleBar.changed.add(() => {
+      if (this.visible) {
+        this.context.scheduleRedraw();
+      }
+    }));
   }
 
   draw() {
@@ -237,9 +239,44 @@ export class SliceViewPanel extends RenderedDataPanel {
       renderLayer.draw(renderContext);
     }
 
-    // Draw the Axis lines if needed
-    if (this.viewer.showAxisLines.value) {
-      this.drawAxisLines(sliceView);
+    if (this.viewer.showAxisLines.value || this.viewer.showScaleBar.value) {
+      if (this.viewer.showAxisLines.value) {
+        // Construct matrix that maps [-1, +1] x/y range to the full viewport data
+        // coordinates.
+        mat4.copy(mat, dataToDevice);
+        for (let i = 0; i < 3; ++i) {
+          mat[12 + i] = 0;
+        }
+
+        for (let i = 0; i < 4; ++i) {
+          mat[2 + 4 * i] = 0;
+        }
+
+
+        let axisLength = Math.min(width, height) / 4 * 1.5;
+        let pixelSize = sliceView.pixelSize;
+        for (let i = 0; i < 12; ++i) {
+          // pixelSize is nm / pixel
+          //
+          mat[i] *= axisLength * pixelSize;
+        }
+      }
+      this.offscreenFramebuffer.bindSingle(OffscreenTextures.COLOR);
+      if (this.viewer.showAxisLines.value) {
+        this.axesLineHelper.draw(mat);
+      }
+      if (this.viewer.showScaleBar.value) {
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        const {scaleBarTexture} = this;
+        const {dimensions} = scaleBarTexture;
+        dimensions.targetLengthInPixels = Math.min(width / 4, 100);
+        dimensions.nanometersPerPixel = sliceView.pixelSize;
+        scaleBarTexture.update();
+        gl.viewport(10, 10, scaleBarTexture.width, scaleBarTexture.height);
+        this.scaleBarCopyHelper.draw(scaleBarTexture.texture);
+        gl.disable(gl.BLEND);
+      }
     }
 
     this.offscreenFramebuffer.unbind();
@@ -248,46 +285,6 @@ export class SliceViewPanel extends RenderedDataPanel {
     this.setGLViewport();
     this.offscreenCopyHelper.draw(
         this.offscreenFramebuffer.colorBuffers[OffscreenTextures.COLOR].texture);
-
-    // Update the scale bar if needed.
-    {
-      let {scaleBarWidget} = this;
-      let {dimensions} = scaleBarWidget;
-      dimensions.targetLengthInPixels = Math.min(width / 4, 100);
-      dimensions.nanometersPerPixel = sliceView.pixelSize;
-      scaleBarWidget.update();
-    }
-  }
-
-  protected drawAxisLines(sliceView : SliceView) {
-
-    let {width, height, dataToDevice} = sliceView;
-    // Draw axes lines.
-    // FIXME: avoid use of temporary matrix
-    let mat = mat4.create();
-
-    // Construct matrix that maps [-1, +1] x/y range to the full viewport data
-    // coordinates.
-    mat4.copy(mat, dataToDevice);
-    for (let i = 0; i < 3; ++i) {
-      mat[12 + i] = 0;
-    }
-
-    for (let i = 0; i < 4; ++i) {
-      mat[2 + 4 * i] = 0;
-    }
-
-
-    let axisLength = Math.min(width, height) / 4 * 1.5;
-    let pixelSize = sliceView.pixelSize;
-    for (let i = 0; i < 12; ++i) {
-      // pixelSize is nm / pixel
-      //
-      mat[i] *= axisLength * pixelSize;
-    }
-    this.offscreenFramebuffer.bindSingle(OffscreenTextures.COLOR);
-    this.axesLineHelper.draw(mat);
-
   }
 
   onResize() {

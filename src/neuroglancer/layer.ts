@@ -20,7 +20,7 @@ import {EditorState} from 'neuroglancer/editor/state';
 import {EditorLayer, toEditorLayer, isEditorLayer} from 'neuroglancer/editor/layer';
 import {RenderedPanel} from 'neuroglancer/display_context';
 import {SpatialPosition} from 'neuroglancer/navigation_state';
-import {RefCounted} from 'neuroglancer/util/disposable';
+import {Borrowed, RefCounted} from 'neuroglancer/util/disposable';
 import {BoundingBox, vec3} from 'neuroglancer/util/geom';
 import {NullarySignal} from 'neuroglancer/util/signal';
 import {addSignalBinding, removeSignalBinding, SignalBindingUpdater} from 'neuroglancer/util/signal_binding_updater';
@@ -212,6 +212,37 @@ export class LayerManager extends RefCounted {
   readyStateChanged = new NullarySignal();
   specificationChanged = new NullarySignal();
   boundPositions = new WeakSet<SpatialPosition>();
+  numDirectUsers = 0;
+
+  constructor() {
+    super();
+    this.layersChanged.add(this.scheduleRemoveLayersWithSingleRef);
+  }
+
+  private scheduleRemoveLayersWithSingleRef =
+    this.registerCancellable(debounce(() => this.removeLayersWithSingleRef(), 0));
+
+  filter(predicate: (layer: ManagedUserLayer) => boolean) {
+    let changed = false;
+    this.managedLayers = this.managedLayers.filter(layer => {
+      if (!predicate(layer)) {
+        this.unbindManagedLayer(layer);
+        changed = true;
+        return false;
+      }
+      return true;
+    });
+    if (changed) {
+      this.layersChanged.dispatch();
+    }
+  }
+
+  private removeLayersWithSingleRef() {
+    if (this.numDirectUsers > 0) {
+      return;
+    }
+    this.filter(layer => layer.refCount !== 1);
+  }
 
   private updateSignalBindings(
       layer: ManagedUserLayer, callback: SignalBindingUpdater<() => void>) {
@@ -220,12 +251,27 @@ export class LayerManager extends RefCounted {
     callback(layer.specificationChanged, this.specificationChanged.dispatch);
   }
 
+  useDirectly () {
+    if (++this.numDirectUsers === 1) {
+      this.layersChanged.remove(this.scheduleRemoveLayersWithSingleRef);
+    }
+    return () => {
+      if (--this.numDirectUsers === 0) {
+        this.layersChanged.add(this.scheduleRemoveLayersWithSingleRef);
+        this.scheduleRemoveLayersWithSingleRef();
+      }
+    };
+  }
+
   /**
    * Assumes ownership of an existing reference to managedLayer.
    */
-  addManagedLayer(managedLayer: ManagedUserLayer) {
+  addManagedLayer(managedLayer: ManagedUserLayer, index?: number|undefined) {
     this.updateSignalBindings(managedLayer, addSignalBinding);
-    this.managedLayers.push(managedLayer);
+    if (index === undefined) {
+      index = this.managedLayers.length;
+    }
+    this.managedLayers.splice(index, 0, managedLayer);
     this.layersChanged.dispatch();
     this.readyStateChanged.dispatch();
     return managedLayer;
@@ -266,14 +312,18 @@ export class LayerManager extends RefCounted {
     this.layersChanged.dispatch();
   }
 
+  remove(index: number) {
+    this.unbindManagedLayer(this.managedLayers[index]);
+    this.managedLayers.splice(index, 1);
+    this.layersChanged.dispatch();
+  }
+
   removeManagedLayer(managedLayer: ManagedUserLayer) {
     let index = this.managedLayers.indexOf(managedLayer);
     if (index === -1) {
       throw new Error(`Internal error: invalid managed layer.`);
     }
-    this.unbindManagedLayer(managedLayer);
-    this.managedLayers.splice(index, 1);
-    this.layersChanged.dispatch();
+    this.remove(index);
   }
 
   reorderManagedLayer(oldIndex: number, newIndex: number) {
@@ -309,6 +359,19 @@ export class LayerManager extends RefCounted {
     // Double check that the layer is in fact an editor layer
     let editorLayer = topLayer ? topLayer.layer : {};
     return toEditorLayer(editorLayer);
+  }
+
+  getUniqueLayerName(name: string) {
+    let suggestedName = name;
+    let suffix = 0;
+    while (this.getLayerByName(suggestedName) !== undefined) {
+      suggestedName = name + (++suffix);
+    }
+    return suggestedName;
+  }
+
+  has(layer: Borrowed<ManagedUserLayer>) {
+    return this.managedLayers.indexOf(layer) !== -1;
   }
 
   /**

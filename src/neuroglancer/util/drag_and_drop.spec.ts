@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2016 Google Inc.
+ * Copyright 2017 Google Inc.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,26 +14,13 @@
  * limitations under the License.
  */
 
-.scale-bar-container {
-  text-align: center;
-  background-color: rgba(0, 0, 0, 0.3);
-  position: absolute;
-  left: 1em;
-  bottom: 1em;
-  padding: 2px;
-  font-weight: bold;
-  
-  /**
-   * This prevents mouse events from occurring on the scale bar, as it inteferes
-   * with navigation.
-   */
-  pointer-events: none;
-}
+import {encodeParametersAsDragType, decodeParametersFromDragType} from 'neuroglancer/util/drag_and_drop';
 
-.scale-bar {
-  min-height: 1ex;
-  background-color: white;
-  padding: 0;
-  margin: 0;
-  margin-top: 2px;
-}
+describe('drag_and_drop', () => {
+  const prefix = 'my-prefix\0';
+  it('round trips simple json', () => {
+    const json = {'a': 'Hello'};
+    const result = decodeParametersFromDragType(encodeParametersAsDragType(prefix, json), prefix);
+    expect(result).toEqual(json);
+  });
+});

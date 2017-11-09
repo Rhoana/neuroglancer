@@ -16,7 +16,6 @@
 from __future__ import absolute_import
 
 import collections
-import json
 
 import numpy as np
 import six
@@ -84,8 +83,7 @@ class PointAnnotationLayer(Layer):
     __slots__ = ()
 
     def __init__(self, *args, **kwargs):
-        super(PointAnnotationLayer, self).__init__(*args, **kwargs)
-        self.type = 'pointAnnotation'
+        super(PointAnnotationLayer, self).__init__(*args, type='pointAnnotation', **kwargs)
 
     points = wrapped_property('points', typed_list(array_wrapper(np.float32, 3)))
 
@@ -103,8 +101,7 @@ class ImageLayer(Layer):
     __slots__ = ()
 
     def __init__(self, *args, **kwargs):
-        super(ImageLayer, self).__init__(*args, **kwargs)
-        self.type = 'image'
+        super(ImageLayer, self).__init__(*args, type='image', **kwargs)
 
     source = wrapped_property('source', volume_source)
     shader = wrapped_property('shader', text_type)
@@ -124,8 +121,7 @@ class SegmentationLayer(Layer):
     __slots__ = ()
 
     def __init__(self, *args, **kwargs):
-        super(SegmentationLayer, self).__init__(*args, **kwargs)
-        self.type = 'segmentation'
+        super(SegmentationLayer, self).__init__(*args, type='segmentation', **kwargs)
 
     source = wrapped_property('source', optional(volume_source))
     mesh = wrapped_property('mesh', optional(text_type))
@@ -181,7 +177,7 @@ class ManagedLayer(JsonObjectWrapper):
             json_data = collections.OrderedDict()
         elif isinstance(layer, local_volume.LocalVolume):
             json_data = collections.OrderedDict()
-            layer = make_layer(layer)
+            layer = make_layer(layer, _readonly=_readonly)
         else:
             if layer is None:
                 json_data = collections.OrderedDict()
@@ -206,7 +202,7 @@ class ManagedLayer(JsonObjectWrapper):
             return setattr(self.layer, key, value)
 
     def __repr__(self):
-        return u'ManagedLayer(%r,%s)' % (encode_json_for_repr(self.name),
+        return u'ManagedLayer(%s,%s)' % (encode_json_for_repr(self.name),
                                          encode_json_for_repr(self.to_json()))
 
     def to_json(self):
@@ -228,7 +224,7 @@ class Layers(object):
         self._layers = []
         self._readonly = _readonly
         for k, v in six.iteritems(json_data):
-            self._layers.append(ManagedLayer(k, v))
+            self._layers.append(ManagedLayer(k, v, _readonly=_readonly))
 
     def index(self, k):
         for i, u in enumerate(self._layers):
@@ -311,6 +307,117 @@ class Layers(object):
         return repr(self._layers)
 
 
+def layout_specification(x, _readonly=False):
+    if isinstance(x, basestring):
+        return six.text_type(x)
+    if isinstance(x, (StackLayout, LayerGroupViewer)):
+        return type(x)(x.to_json(), _readonly=_readonly)
+    if not isinstance(x, dict):
+        raise ValueError
+    layout_type = layout_types.get(x.get('type'))
+    if layout_type is None:
+        raise ValueError
+    return layout_type(x, _readonly=_readonly)
+
+
+layout_specification.supports_readonly = True
+
+
+@export
+class StackLayout(JsonObjectWrapper):
+    __slots__ = ()
+    type = wrapped_property('type', text_type)
+    children = wrapped_property('children', typed_list(layout_specification))
+
+    def __getitem__(self, key):
+        return self.children[key]
+
+    def __len__(self):
+        return len(self.children)
+
+    def __setitem__(self, key, value):
+        self.children[key] = value
+
+    def __delitem__(self, key):
+        del self.children[key]
+
+    def __iter__(self):
+        return iter(self.children)
+
+
+@export
+def row_layout(children):
+    return StackLayout(type='row', children=children)
+
+
+@export
+def column_layout(children):
+    return StackLayout(type='column', children=children)
+
+
+def navigation_link_type(x):
+    x = six.text_type(x)
+    x = x.lower()
+    if x not in [u'linked', u'unlinked', u'relative']:
+        raise ValueError('Invalid navigation link type: %r' % x)
+    return x
+
+
+def make_linked_navigation_type(value_type):
+    class LinkedType(JsonObjectWrapper):
+        __slots__ = ()
+        link = wrapped_property('link', optional(navigation_link_type, u'linked'))
+        value = wrapped_property('value', optional(value_type))
+
+    return LinkedType
+
+
+@export
+class LinkedSpatialPosition(make_linked_navigation_type(SpatialPosition)):
+    __slots__ = ()
+
+
+@export
+class LinkedZoomFactor(make_linked_navigation_type(float)):
+    __slots__ = ()
+
+
+@export
+class LinkedOrientationState(make_linked_navigation_type(array_wrapper(np.float32, 4))):
+    __slots__ = ()
+
+
+@export
+class LayerGroupViewer(JsonObjectWrapper):
+    __slots__ = ()
+    type = wrapped_property('type', text_type)
+    layers = wrapped_property('layers', typed_list(text_type))
+    layout = wrapped_property('layout', text_type)
+    position = wrapped_property('position', LinkedSpatialPosition)
+    cross_section_orientation = crossSectionOrientation = wrapped_property('crossSectionOrientation', LinkedOrientationState)
+    cross_section_zoom = crossSectionZoom = wrapped_property('crossSectionZoom', LinkedZoomFactor)
+    perspective_orientation = perspectiveOrientation = wrapped_property('perspectiveOrientation', LinkedOrientationState)
+    perspective_zoom = perspectiveZoom = wrapped_property('perspectiveZoom', LinkedZoomFactor)
+
+    def __init__(self, *args, **kwargs):
+        super(LayerGroupViewer, self).__init__(*args, **kwargs)
+        self.type = 'viewer'
+
+    def __repr__(self):
+        j = self.to_json()
+        j.pop('type', None)
+        return u'%s(%s)' % (type(self).__name__, encode_json_for_repr(j))
+
+
+
+layout_types = {
+    'row': StackLayout,
+    'column': StackLayout,
+    'viewer': LayerGroupViewer,
+}
+
+
+
 @export
 class ViewerState(JsonObjectWrapper):
     __slots__ = ()
@@ -320,7 +427,7 @@ class ViewerState(JsonObjectWrapper):
         'perspectiveOrientation', optional(array_wrapper(np.float32, 4)))
     show_slices = showSlices = wrapped_property('showSlices', optional(bool, True))
     layers = wrapped_property('layers', Layers)
-    layout = wrapped_property('layout', optional(text_type, '4panel'))
+    layout = wrapped_property('layout', optional(layout_specification, u'4panel'))
 
     @property
     def position(self):
