@@ -35,6 +35,7 @@ import {registerActionListener} from 'neuroglancer/util/event_action_map';
 import {CompoundTrackable} from 'neuroglancer/util/trackable';
 import {WatchableVisibilityPriority} from 'neuroglancer/visibility_priority/frontend';
 import {EnumSelectWidget} from 'neuroglancer/widget/enum_widget';
+import {EditorState} from 'neuroglancer/editor/state';
 
 require('./layer_group_viewer.css');
 
@@ -220,7 +221,9 @@ export class LayerGroupViewer extends RefCounted {
   get changed () { return this.state.changed; }
 
   constructor(
-      public element: HTMLElement, public viewerState: LayerGroupViewerState,
+      public element: HTMLElement,
+      public editorState: EditorState,
+      public viewerState: LayerGroupViewerState,
       options: Partial<LayerGroupViewerOptions> = {}) {
     super();
     this.options = {showLayerPanel: true, showViewerMenu: false, ...options};

@@ -199,6 +199,9 @@ export class SliceViewPanel extends RenderedDataPanel {
     this.gl.clearColor(0.0, 0.0, 0.0, 0.0);
     gl.clear(gl.COLOR_BUFFER_BIT);
 
+    // FIXME: avoid use of temporary matrix
+    let mat = mat4.create();
+
     /*
      * Draw everything to the framebuffer
      */

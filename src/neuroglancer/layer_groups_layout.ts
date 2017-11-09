@@ -284,7 +284,7 @@ export class SingletonLayerGroupViewer extends RefCounted implements LayoutCompo
   constructor(public element: HTMLElement, layout: string, viewer: Viewer) {
     super();
     this.layerGroupViewer = this.registerDisposer(new LayerGroupViewer(
-        element, {
+        element, viewer.editorState, {
           display: viewer.display,
           navigationState: viewer.navigationState.addRef(),
           perspectiveNavigationState: viewer.perspectiveNavigationState.addRef(),
@@ -502,7 +502,7 @@ function makeComponent(container: LayoutComponentContainer, spec: any) {
       const viewer = container.viewer;
       const layerSpecification = new LayerSubsetSpecification(viewer.layerSpecification.addRef());
       const layerGroupViewer = new LayerGroupViewer(
-          element, {
+          element, viewer.editorState, {
             display: viewer.display,
             navigationState: viewer.navigationState.addRef(),
             perspectiveNavigationState: viewer.perspectiveNavigationState.addRef(),

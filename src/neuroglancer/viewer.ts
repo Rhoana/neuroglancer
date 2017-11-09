@@ -339,7 +339,6 @@ export class Viewer extends RefCounted implements ViewerState {
           opt.value = v.toString();
           select.appendChild(opt);
         });
-        element.appendChild(select);
         // Set editor state when user selects option
         this.registerEventListener(select, 'change', () => {
           let value = parseInt(select.value, 10);
@@ -352,7 +351,6 @@ export class Viewer extends RefCounted implements ViewerState {
         button.id = 'save-button';
         button.textContent = 'save';
         button.title = 'Save';
-        element.appendChild(button);
         this.registerEventListener(button, 'click', () => {
           this.saveAllEdits();
         });
