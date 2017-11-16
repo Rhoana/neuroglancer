@@ -193,6 +193,9 @@ export class SliceView extends Base {
   }
 
   updateRendering() {
+    /*
+     * Called on draw of any panel
+     */
     if (!this.renderingStale || !this.hasValidViewport || this.width === 0 || this.height === 0) {
       return;
     }

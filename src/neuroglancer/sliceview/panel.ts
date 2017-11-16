@@ -186,6 +186,7 @@ export class SliceViewPanel extends RenderedDataPanel {
       return;
     }
     this.onResize();
+    // Prepare Chunks in slice
     sliceView.updateRendering();
 
     let {gl} = this;

@@ -155,6 +155,7 @@ export class DisplayContext extends RefCounted {
       this.canvasRect = canvas.getBoundingClientRect();
       this.gl.clearColor(0.0, 0.0, 0.0, 0.0);
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      // Draw every rendered panel (any subclass)
       for (let panel of this.panels) {
         let {element} = panel;
         if (!panel.visible || element.clientWidth === 0 || element.clientHeight === 0 ||
