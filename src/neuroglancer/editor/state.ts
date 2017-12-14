@@ -27,7 +27,7 @@ import {MouseSelectionState} from 'neuroglancer/layer';
 export const enum EDITORS {
   NONE = 0,
   MERGE = 1,
-  //  SPLIT = 2,
+  SPLIT = 2,
   TOTAL = 2,
 };
 // editor UI keys must be in EDITORS enum
